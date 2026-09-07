@@ -1,20 +1,23 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isApiBindingEnabled } from "@/lib/api/binding";
-import { REFRESH_COOKIE } from "@/lib/auth/cookies";
-import { clearAuthCookies, getBackendUrl, validateMutationCsrf } from "@/lib/auth/server";
+import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
+import { backendFetch, clearAuthCookies, validateMutationCsrf } from "@/lib/auth/server";
 
 export async function POST(request: Request) {
   if (!(await validateMutationCsrf(request))) return NextResponse.json({ success: false, message: "CSRF validation failed" }, { status: 403 });
   const store = await cookies();
   const refresh = store.get(REFRESH_COOKIE)?.value;
+  const access = store.get(ACCESS_COOKIE)?.value;
   // Binding paused: clear local cookies only.
   if (refresh && isApiBindingEnabled()) {
-    await fetch(getBackendUrl("auth/logout/"), {
+    await backendFetch("auth/logout/", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ refresh }),
-      cache: "no-store"
+      headers: {
+        "Content-Type": "application/json",
+        ...(access ? { Authorization: `Bearer ${access}` } : {})
+      },
+      body: JSON.stringify({ refresh })
     }).catch(() => null);
   }
   await clearAuthCookies();

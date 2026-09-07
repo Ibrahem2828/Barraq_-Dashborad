@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { isApiBindingEnabled, offlineStubForPath } from "@/lib/api/binding";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
-import { clearAuthCookies, getBackendUrl, refreshAccessToken, validateMutationCsrf } from "@/lib/auth/server";
+import { backendFetch, clearAuthCookies, refreshAccessToken, validateMutationCsrf } from "@/lib/auth/server";
 
 const allowedMethods = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
 
@@ -23,8 +23,8 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
 
   if (!(await validateMutationCsrf(request))) return NextResponse.json({ success: false, message: "CSRF validation failed" }, { status: 403 });
 
-  const target = new URL(getBackendUrl(`${safePath}/`));
-  request.nextUrl.searchParams.forEach((value, key) => target.searchParams.append(key, value));
+  const query = request.nextUrl.searchParams.toString();
+  const targetPath = `${safePath}/${query ? `?${query}` : ""}`;
 
   const rawBody = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
 
@@ -45,7 +45,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     const idempotency = request.headers.get("idempotency-key");
     if (idempotency) headers.set("Idempotency-Key", idempotency);
     const body = rawBody ? rawBody.slice(0) : undefined;
-    return fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store" });
+    return backendFetch(targetPath, { method: request.method, headers, body });
   };
 
   let response = await forward(access);

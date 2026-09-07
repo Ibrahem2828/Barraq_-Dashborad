@@ -904,10 +904,97 @@
   font-weight: var(--fw-semibold);
 }
 
-.brand-loading-screen .brand-spinner__label {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
+.brand-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--purple) 9%, transparent), transparent 34%),
+    var(--gradient-shell);
+}
+
+.brand-loading-screen__smoke {
+  position: absolute;
+  inset: 0;
+  filter: blur(68px) saturate(1.25);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.brand-loading-screen__smoke-orb {
+  position: absolute;
+  width: min(38vw, 420px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0.2;
+  animation: loading-smoke-drift 7s ease-in-out infinite alternate;
+}
+
+.brand-loading-screen__smoke-orb--purple { top: 8%; inset-inline-start: 18%; background: var(--purple); }
+.brand-loading-screen__smoke-orb--blue { inset-block-end: 8%; inset-inline-end: 16%; background: var(--blue); animation-delay: -2s; }
+.brand-loading-screen__smoke-orb--pink { top: 28%; inset-inline-end: 8%; background: var(--pink); animation-delay: -4s; }
+.brand-loading-screen__smoke-orb--gold { inset-block-end: 18%; inset-inline-start: 10%; background: var(--gold); animation-delay: -6s; }
+
+.brand-loading-screen__mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.brand-loading-screen__logo {
+  width: 168px;
+  height: 96px;
+  object-fit: contain;
+  opacity: 0;
+  animation: loading-logo-reveal 0.9s var(--ease-out) 0.08s forwards, loading-logo-float 3.8s ease-in-out 1s infinite;
+  filter: drop-shadow(0 16px 28px rgba(123, 46, 232, 0.2));
+}
+
+.brand-loading-screen__name {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: -0.04em;
   color: var(--text);
+  opacity: 0;
+  transform: translateY(8px);
+  animation: loading-copy-reveal 0.65s var(--ease-out) 0.45s forwards;
+}
+
+.brand-loading-screen__mark p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  opacity: 0;
+  animation: loading-copy-reveal 0.65s var(--ease-out) 0.62s forwards;
+}
+
+.brand-loading-screen__bar {
+  width: min(220px, 58vw);
+  height: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--purple) 12%, var(--surface-3));
+  opacity: 0;
+  animation: loading-copy-reveal 0.5s var(--ease-out) 0.75s forwards;
+}
+
+.brand-loading-screen__bar::after {
+  content: "";
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--purple), var(--pink), var(--blue));
+  animation: loading-bar-sweep 1.3s ease-in-out infinite;
 }
 
 .loading-state {
@@ -926,11 +1013,45 @@
   50% { transform: scale(0.96); opacity: 0.88; }
 }
 
+@keyframes loading-smoke-drift {
+  from { transform: translate3d(-5%, -3%, 0) scale(0.9); }
+  to { transform: translate3d(8%, 6%, 0) scale(1.14); }
+}
+
+@keyframes loading-logo-reveal {
+  from { opacity: 0; transform: scale(0.78) rotate(-7deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes loading-logo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes loading-copy-reveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes loading-bar-sweep {
+  from { transform: translateX(-140%); }
+  to { transform: translateX(280%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .brand-spinner__logo,
-  .brand-spinner__ring::before {
+  .brand-spinner__ring::before,
+  .brand-loading-screen__smoke-orb,
+  .brand-loading-screen__logo,
+  .brand-loading-screen__name,
+  .brand-loading-screen__mark p,
+  .brand-loading-screen__bar,
+  .brand-loading-screen__bar::after {
     animation: none !important;
   }
+  .brand-loading-screen__logo,
+  .brand-loading-screen__name,
+  .brand-loading-screen__mark p,
+  .brand-loading-screen__bar { opacity: 1; transform: none; }
 }
 
 @media (max-width: 1380px) {

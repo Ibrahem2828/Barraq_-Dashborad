@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
-import { cookieOptions, getBackendUrl } from "@/lib/auth/server";
+import { backendFetch, cookieOptions } from "@/lib/auth/server";
 
 function withAuthCookies(response: NextResponse, access: string, refresh: string) {
   const csrf = crypto.randomUUID();
@@ -30,11 +30,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const upstream = await fetch(getBackendUrl("auth/login/"), {
+    const upstream = await backendFetch("auth/login/", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
-      cache: "no-store"
+      body: JSON.stringify(body)
     });
     const payload = await upstream.json().catch(() => ({ success: false, message: "Authentication failed" }));
     if (!upstream.ok) return NextResponse.json(payload, { status: upstream.status });
@@ -47,6 +46,18 @@ export async function POST(request: Request) {
       typeof data.refresh === "string" ? data.refresh : typeof data.refresh_token === "string" ? data.refresh_token : null;
     if (!access || !refresh) {
       return NextResponse.json({ success: false, message: "Backend token contract mismatch" }, { status: 502 });
+    }
+
+    // Authentication alone is insufficient: students must never receive a
+    // dashboard session. Confirm RBAC access before writing auth cookies.
+    const adminCheck = await backendFetch("admin/me/", {
+      headers: { Authorization: `Bearer ${access}` }
+    });
+    if (!adminCheck.ok) {
+      return NextResponse.json(
+        { success: false, message: "هذا الحساب غير مخوّل للوصول إلى لوحة التحكم", code: "ADMIN_ACCESS_REQUIRED" },
+        { status: adminCheck.status === 401 ? 401 : 403 }
+      );
     }
 
     const response = NextResponse.json({ success: true, data: { authenticated: true }, message: "Signed in" });

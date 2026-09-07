@@ -7,5 +7,8 @@
 - Brand assets: 7 optimized images
 - Public backend secrets in code: 0
 - OpenAI/API provider keys in dashboard: 0
-- Runtime build: not executed in the isolated environment because npm registry access was unavailable
+- Runtime build: PASS — Next.js 15 production standalone build completed successfully
+- Automated tests: PASS — 26 tests
+- HTTP smoke: PASS — login and health returned 200, security headers present, unknown authenticated route returned 404
+- Browser QA: PASS — Arabic login rendered correctly with no browser console warnings or errors
 - Required release gates in connected CI: `npm ci`, `npm run typecheck`, `npm run build`, container startup, login smoke test, permissions test, API contract smoke test

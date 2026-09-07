@@ -32,7 +32,7 @@
 | 🔌 الباك إند | عبر `BACKEND_API_URL` (Server-only) |
 
 ```text
-BACKEND_API_URL → https://api.barraq.xn--mgbaab0cxheq.tech/api
+BACKEND_API_URL → http://backend:8000/api/v1 (داخل Docker Compose)
 ```
 
 > 📄 تغطية واجهات الـ API مفصّلة في [`DASHBOARD_API_COVERAGE.md`](./DASHBOARD_API_COVERAGE.md)
@@ -95,6 +95,7 @@ npm install
 | المتغير | الوصف |
 |---|---|
 | `BACKEND_API_URL` | عنوان الباك إند (Server-only) |
+| `BACKEND_API_TIMEOUT_MS` | مهلة اتصال BFF بالباك، والقيمة الافتراضية `15000` |
 | `API_BINDING_ENABLED` | `true` للربط الحي · `false` لوضع Offline stubs |
 | `NEXT_PUBLIC_API_BINDING_ENABLED` | نفس العلم للعميل |
 | `AUTH_COOKIE_SECURE` | `true` مع HTTPS في الإنتاج |
@@ -135,6 +136,7 @@ node scripts/validate-dashboard.cjs
 ```text
 المتصفح  →  POST /api/auth/login
 السيرفر   →  POST {BACKEND_API_URL}/auth/login/
+التحقق    →  GET  {BACKEND_API_URL}/admin/me/ قبل إنشاء الجلسة
 النتيجة   →  تخزين access + refresh في Cookies آمنة
 الطلبات  →  جميع استدعاءات اللوحة عبر /api/bff/*
 ```
@@ -157,7 +159,7 @@ node scripts/validate-dashboard.cjs
 1. 📦 ارفع المشروع إلى مستودع Git خاص
 2. 🧩 أنشئ تطبيق Docker Compose في Coolify
 3. 🌐 اربط نطاق اللوحة بالخدمة `dashboard` على المنفذ `3000`
-4. 🔑 أضف `BACKEND_API_URL` كمتغير Runtime فقط
+4. 🔑 استخدم عنوان Backend الداخلي في Compose، ولا تعرضه للمتصفح
 5. 🚫 لا تضف مفاتيح OpenAI أو AI Service إلى لوحة التحكم
 6. 🔒 فعّل HTTPS قبل ضبط `AUTH_COOKIE_SECURE=true`
 

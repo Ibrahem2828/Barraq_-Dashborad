@@ -4,6 +4,17 @@ import { isApiBindingEnabled, offlineStubForPath } from "@/lib/api/binding";
 import { getErrorMessage, normalizeEnvelope } from "@/lib/api/normalize";
 import type { ApiEnvelope } from "@/types/api";
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const prefix = `${name}=`;
@@ -40,7 +51,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiEnve
     ? await response.json()
     : { message: await response.text() };
 
-  if (!response.ok) throw new Error(getErrorMessage(payload, `HTTP ${response.status}`));
+  if (!response.ok) {
+    const code = payload && typeof payload === "object" && "code" in payload
+      ? String((payload as { code?: unknown }).code ?? "") || undefined
+      : undefined;
+    throw new ApiRequestError(getErrorMessage(payload, `HTTP ${response.status}`), response.status, code);
+  }
   return normalizeEnvelope<T>(payload);
 }
 

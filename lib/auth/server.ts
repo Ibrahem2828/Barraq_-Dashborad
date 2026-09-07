@@ -2,16 +2,13 @@ import "server-only";
 
 import { cookies, headers } from "next/headers";
 import { isApiBindingEnabled } from "@/lib/api/binding";
+import { backendFetch, getBackendUrl } from "@/lib/api/backend";
 import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
 
-const backendUrl = (process.env.BACKEND_API_URL ?? "https://api.baraqapp.com/api/v1").replace(/\/$/, "");
 const cookieSecure = (process.env.AUTH_COOKIE_SECURE ?? "true").toLowerCase() === "true";
 const cookieDomain = process.env.AUTH_COOKIE_DOMAIN || undefined;
 
-export function getBackendUrl(path: string): string {
-  const clean = path.replace(/^\/+/, "");
-  return `${backendUrl}/${clean}`;
-}
+export { backendFetch, getBackendUrl };
 
 export function cookieOptions(httpOnly = true) {
   return {
@@ -49,11 +46,10 @@ export async function refreshAccessToken(): Promise<string | null> {
     return store.get(ACCESS_COOKIE)?.value ?? "offline-access";
   }
 
-  const response = await fetch(getBackendUrl("auth/refresh/"), {
+  const response = await backendFetch("auth/refresh/", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ refresh }),
-    cache: "no-store"
+    body: JSON.stringify({ refresh })
   });
   if (!response.ok) return null;
   const payload = await response.json() as Record<string, unknown>;

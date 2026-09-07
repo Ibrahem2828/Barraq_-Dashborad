@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api/client";
+import { api, ApiRequestError } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import type { AdminMe } from "@/types/api";
 
@@ -26,7 +26,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     api.get<AdminMe>(endpoints.admin.me)
       .then((response) => { if (alive) { setAdmin(response.data); setError(null); } })
-      .catch((reason: unknown) => { if (alive) setError(reason instanceof Error ? reason.message : "تعذر تحميل صلاحيات الحساب"); })
+      .catch((reason: unknown) => {
+        if (!alive) return;
+        setAdmin(null);
+        setError(reason instanceof Error ? reason.message : "تعذر تحميل صلاحيات الحساب");
+        if (reason instanceof ApiRequestError && (reason.status === 401 || reason.status === 403)) {
+          const locale = window.location.pathname.split("/")[1] === "en" ? "en" : "ar";
+          window.location.replace(`/${locale}/login?reason=session`);
+        }
+      })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [revision]);

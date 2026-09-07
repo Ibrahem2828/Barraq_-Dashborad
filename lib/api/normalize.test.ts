@@ -67,6 +67,10 @@ describe("getErrorMessage", () => {
   });
 
   it("uses the fallback when none of the known error shapes match", () => {
-    expect(getErrorMessage({ errors: { field: ["required"] } })).toBe("تعذر تنفيذ الطلب");
+    expect(getErrorMessage({ unexpected: true })).toBe("تعذر تنفيذ الطلب");
+  });
+
+  it("surfaces the first backend field validation message", () => {
+    expect(getErrorMessage({ errors: { email: ["البريد مستخدم مسبقاً"] } })).toBe("البريد مستخدم مسبقاً");
   });
 });

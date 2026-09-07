@@ -28,5 +28,10 @@ export function getErrorMessage(payload: unknown, fallback = "تعذر تنفي�
     if (typeof error.message === "string") return error.message;
   }
   if (typeof value.detail === "string") return value.detail;
+  if (value.errors && typeof value.errors === "object") {
+    const first = Object.values(value.errors as Record<string, unknown>)[0];
+    if (typeof first === "string") return first;
+    if (Array.isArray(first) && typeof first[0] === "string") return first[0];
+  }
   return fallback;
 }
