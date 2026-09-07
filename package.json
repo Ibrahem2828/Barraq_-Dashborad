@@ -1,0 +1,31 @@
+{
+  "name": "baraq-admin-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "validate": "node scripts/validate-dashboard.cjs",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "next": "^15.5.21",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@types/node": "22.15.30",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@vitest/coverage-v8": "^5.0.0",
+    "eslint": "9.28.0",
+    "eslint-config-next": "15.4.6",
+    "typescript": "5.8.3",
+    "vitest": "^5.0.0"
+  }
+}
