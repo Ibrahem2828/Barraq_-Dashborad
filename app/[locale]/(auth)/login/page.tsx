@@ -1,12 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { authApi } from "@/lib/api/auth-client";
 import { useDictionary } from "@/lib/i18n/useDictionary";
+import { toast } from "@/lib/ui/toast";
 import type { Locale } from "@/types/api";
 
 export default function LoginPage() {
@@ -19,26 +22,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setError(null);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-        credentials: "same-origin"
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.message ?? payload.detail ?? dictionary.loginFailed);
+      await authApi.login(
+        { email: email.trim().toLowerCase(), password },
+        dictionary.loginFailed
+      );
+      toast.success(dictionary.loginSuccess);
       const next = searchParams.get("next");
       router.replace(next?.startsWith(`/${locale}`) ? next : `/${locale}`);
       router.refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : dictionary.loginFailed);
+      toast.error(reason instanceof Error ? reason.message : dictionary.loginFailed);
     } finally {
       setBusy(false);
     }
@@ -107,12 +105,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error ? (
-            <div className="form-error" role="alert">
-              {error}
-            </div>
-          ) : null}
-
           <label className="login-field">
             <span>{dictionary.email}</span>
             <input
@@ -141,6 +133,10 @@ export default function LoginPage() {
           <Button type="submit" disabled={busy} aria-busy={busy} className="login-form__submit">
             {busy ? dictionary.signingIn : dictionary.signIn}
           </Button>
+
+          <p className="login-form__alt">
+            <Link href={`/${locale}/forgot-password`}>{dictionary.forgotPassword}</Link>
+          </p>
 
           <div className="login-security" aria-label={dictionary.securityFeatures}>
             <span>{dictionary.secureConnection}</span>

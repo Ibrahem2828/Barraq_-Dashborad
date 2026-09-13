@@ -47,7 +47,13 @@ export function Modal({
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header>
           <h2 id={titleId}>{title}</h2>
-          <button ref={closeRef} type="button" className="icon-button" onClick={onClose} aria-label="إغلاق">
+          <button
+            ref={closeRef}
+            type="button"
+            className="icon-button modal__close"
+            onClick={onClose}
+            aria-label="إغلاق"
+          >
             <Icon name="close" />
           </button>
         </header>

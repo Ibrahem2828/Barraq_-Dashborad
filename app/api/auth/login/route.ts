@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { isApiBindingEnabled } from "@/lib/api/binding";
+import { backendJson } from "@/lib/api/backend-http";
+import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
-import { backendFetch, cookieOptions } from "@/lib/auth/server";
+import { cookieOptions } from "@/lib/auth/server";
 
 function withAuthCookies(response: NextResponse, access: string, refresh: string) {
   const csrf = crypto.randomUUID();
@@ -19,26 +20,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Invalid JSON" }, { status: 400 });
   }
 
-  // Binding fully paused: local offline session only.
+  // Never issue session cookies without a live backend auth check.
   if (!isApiBindingEnabled()) {
-    const response = NextResponse.json({
-      success: true,
-      data: { authenticated: true, offline: true },
-      message: "Signed in (API binding paused)"
-    });
-    return withAuthCookies(response, "offline-access", "offline-refresh");
+    return NextResponse.json(bindingDisabledPayload(), { status: 503 });
   }
 
   try {
-    const upstream = await backendFetch("auth/login/", {
+    const upstream = await backendJson<Record<string, unknown>>("auth/login/", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body)
+      data: body
     });
-    const payload = await upstream.json().catch(() => ({ success: false, message: "Authentication failed" }));
-    if (!upstream.ok) return NextResponse.json(payload, { status: upstream.status });
+    const payload = (upstream.data && typeof upstream.data === "object"
+      ? upstream.data
+      : { success: false, message: "Authentication failed" }) as Record<string, unknown>;
+    if (upstream.status < 200 || upstream.status >= 300) {
+      return NextResponse.json(payload, { status: upstream.status });
+    }
 
-    const root = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    const root = payload;
     const data = (root.data && typeof root.data === "object" ? root.data : root) as Record<string, unknown>;
     const access =
       typeof data.access === "string" ? data.access : typeof data.access_token === "string" ? data.access_token : null;
@@ -46,18 +45,6 @@ export async function POST(request: Request) {
       typeof data.refresh === "string" ? data.refresh : typeof data.refresh_token === "string" ? data.refresh_token : null;
     if (!access || !refresh) {
       return NextResponse.json({ success: false, message: "Backend token contract mismatch" }, { status: 502 });
-    }
-
-    // Authentication alone is insufficient: students must never receive a
-    // dashboard session. Confirm RBAC access before writing auth cookies.
-    const adminCheck = await backendFetch("admin/me/", {
-      headers: { Authorization: `Bearer ${access}` }
-    });
-    if (!adminCheck.ok) {
-      return NextResponse.json(
-        { success: false, message: "هذا الحساب غير مخوّل للوصول إلى لوحة التحكم", code: "ADMIN_ACCESS_REQUIRED" },
-        { status: adminCheck.status === 401 ? 401 : 403 }
-      );
     }
 
     const response = NextResponse.json({ success: true, data: { authenticated: true }, message: "Signed in" });

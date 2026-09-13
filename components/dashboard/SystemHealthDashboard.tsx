@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -9,37 +10,63 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
+import { ApiError } from "@/lib/api/normalize";
 import { useDictionary } from "@/lib/i18n/useDictionary";
-import type { SystemHealth } from "@/types/api";
+import { dashboardKeys } from "@/lib/query/keys";
+import type { AnyRecord, SystemHealth } from "@/types/api";
 
 export function SystemHealthDashboard() {
   const dictionary = useDictionary();
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [revision, setRevision] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    api
-      .get<SystemHealth>(endpoints.admin.health)
-      .then((response) => {
-        if (alive) {
-          setHealth(response.data);
-          setError(null);
-        }
-      })
-      .catch((reason: unknown) => {
-        if (alive) setError(reason instanceof Error ? reason.message : dictionary.systemCheckFailed);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [revision, dictionary.systemCheckFailed]);
+  const systemQuery = useQuery({
+    queryKey: dashboardKeys.systemHealth,
+    queryFn: async () => {
+      const response = await api.get<SystemHealth>(endpoints.admin.health);
+      return response.data;
+    },
+    retry: (failureCount, reason) => {
+      if (reason instanceof ApiError && (reason.status === 401 || reason.status === 403)) return false;
+      return failureCount < 1;
+    }
+  });
+
+  const aiQuery = useQuery({
+    queryKey: dashboardKeys.aiServiceHealth,
+    queryFn: async () => {
+      const response = await api.get<AnyRecord>(endpoints.ai.serviceHealth);
+      return response.data;
+    },
+    retry: 1
+  });
+
+  const reload = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.systemHealth });
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.aiServiceHealth });
+  }, [queryClient]);
+
+  // Match prior allSettled UX: wait until both requests finish (including refresh).
+  const loading = systemQuery.isFetching || aiQuery.isFetching;
+
+  const health = systemQuery.data ?? null;
+  let error: string | null = null;
+  if (systemQuery.error) {
+    const reason = systemQuery.error;
+    if (reason instanceof ApiError && reason.status === 401) {
+      error = null;
+    } else if (reason instanceof ApiError && reason.status === 403) {
+      error = dictionary.httpForbidden;
+    } else {
+      error = reason instanceof Error ? reason.message : dictionary.systemCheckFailed;
+    }
+  }
+
+  const aiHealth = aiQuery.data ?? null;
+  const aiHealthError = aiQuery.error
+    ? aiQuery.error instanceof Error
+      ? aiQuery.error.message
+      : dictionary.aiServiceUnreachable
+    : null;
 
   const healthy =
     health && [health.database, health.cache, health.storage].every((value) => value.toLowerCase() === "healthy");
@@ -50,7 +77,7 @@ export function SystemHealthDashboard() {
         title={dictionary.system}
         description={dictionary.systemDesc}
         actions={
-          <Button variant="secondary" onClick={() => setRevision((value) => value + 1)}>
+          <Button variant="secondary" onClick={reload}>
             <Icon name="refresh" />
             {dictionary.checkNow}
           </Button>
@@ -61,7 +88,7 @@ export function SystemHealthDashboard() {
           <LoadingState />
         </Card>
       ) : error || !health ? (
-        <ErrorState message={error ?? dictionary.statusLoadFailed} onRetry={() => setRevision((value) => value + 1)} />
+        <ErrorState message={error ?? dictionary.statusLoadFailed} onRetry={reload} />
       ) : (
         <div className="system-layout">
           <Card className="system-hero">
@@ -100,6 +127,31 @@ export function SystemHealthDashboard() {
               </Card>
             ))}
           </div>
+
+          <Card className="configuration-card">
+            <header>
+              <h2>{dictionary.aiServiceHealthTitle}</h2>
+              <span>{dictionary.aiServiceHealthDesc}</span>
+            </header>
+            {aiHealthError ? (
+              <p className="inline-error" role="alert">
+                {dictionary.aiServiceUnreachable}: {aiHealthError}
+              </p>
+            ) : (
+              <>
+                <p style={{ marginTop: 0 }}>{dictionary.aiServiceReachable}</p>
+                <dl>
+                  {Object.entries(aiHealth ?? {}).map(([key, value]) => (
+                    <div key={key}>
+                      <dt>{key}</dt>
+                      <dd>{typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
+          </Card>
+
           <Card className="configuration-card">
             <header>
               <h2>{dictionary.envDetails}</h2>

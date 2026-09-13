@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { api } from "@/lib/api/client";
 import { normalizeList } from "@/lib/api/normalize";
+import { isUnauthorizedError } from "@/lib/auth/session-expired";
 import type { AnyRecord, ListPayload, Paginated } from "@/types/api";
 
 export interface ResourceQuery {
@@ -13,26 +15,49 @@ export interface ResourceQuery {
   [key: string]: string | number | boolean | undefined;
 }
 
+const emptyList: Paginated<AnyRecord> = {
+  count: 0,
+  next: null,
+  previous: null,
+  results: []
+};
+
+/** Stable query key prefix for list resources (invalidate by endpoint after mutations). */
+export function resourceQueryKey(endpoint: string, query?: ResourceQuery) {
+  return query === undefined ? (["resource", endpoint] as const) : (["resource", endpoint, query] as const);
+}
+
 export function useResource(endpoint: string, query: ResourceQuery) {
-  const [data, setData] = useState<Paginated<AnyRecord>>({ count: 0, next: null, previous: null, results: [] });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+  const queryClient = useQueryClient();
 
-  const reload = useCallback(() => setRevision((value) => value + 1), []);
-  const queryKey = JSON.stringify(query);
+  const result = useQuery({
+    queryKey: resourceQueryKey(endpoint, query),
+    queryFn: async () => {
+      const response = await api.get<ListPayload<AnyRecord>>(endpoint, query);
+      return normalizeList(response.data);
+    },
+    retry: (failureCount, reason) => {
+      if (isUnauthorizedError(reason)) return false;
+      return failureCount < 1;
+    }
+  });
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    api.get<ListPayload<AnyRecord>>(endpoint, query)
-      .then((response) => { if (alive) setData(normalizeList(response.data)); })
-      .catch((reason: unknown) => { if (alive) setError(reason instanceof Error ? reason.message : "تعذر تحميل البيانات"); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey is query's stable identity; re-running on every new `query` object reference (not just on real changes) would refetch every render.
-  }, [endpoint, revision, queryKey]);
+  const reload = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: resourceQueryKey(endpoint) });
+  }, [endpoint, queryClient]);
 
-  return { data, loading, error, reload };
+  const error =
+    result.error && !isUnauthorizedError(result.error)
+      ? result.error instanceof Error
+        ? result.error.message
+        : "تعذر تحميل البيانات"
+      : null;
+
+  return {
+    data: result.data ?? emptyList,
+    // Match prior UX: show loading on initial fetch and on refresh/filter refetch.
+    loading: result.isFetching,
+    error,
+    reload
+  };
 }

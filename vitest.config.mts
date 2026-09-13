@@ -9,7 +9,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, ".")
+      "@": path.resolve(import.meta.dirname, "."),
+      // "server-only" throws on import outside Next's RSC bundler; its own
+      // package ships this no-op entry point for exactly that situation.
+      "server-only": path.resolve(import.meta.dirname, "node_modules/server-only/empty.js")
     }
   }
 });

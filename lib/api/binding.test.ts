@@ -1,25 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isApiBindingEnabled, offlineStubForPath } from "./binding";
 
-const ENV_KEYS = ["NEXT_PUBLIC_API_BINDING_ENABLED", "API_BINDING_ENABLED"] as const;
+const ENV_KEYS = ["NEXT_PUBLIC_API_BINDING_ENABLED", "API_BINDING_ENABLED", "NODE_ENV"] as const;
 type EnvSnapshot = Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>;
 
+// NODE_ENV is typed read-only by @types/node; vi.stubEnv/unstubAllEnvs is
+// the sanctioned way to override it (and any other env var) per-test.
 function setEnv(values: EnvSnapshot) {
   for (const key of ENV_KEYS) {
-    if (values[key] === undefined) delete process.env[key];
-    else process.env[key] = values[key];
+    if (values[key] !== undefined) vi.stubEnv(key, values[key]);
   }
 }
 
 describe("isApiBindingEnabled", () => {
-  let original: EnvSnapshot;
-
-  beforeEach(() => {
-    original = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]])) as EnvSnapshot;
-  });
-
   afterEach(() => {
-    setEnv(original);
+    vi.unstubAllEnvs();
   });
 
   it("is disabled when neither flag is set", () => {
@@ -49,6 +44,26 @@ describe("isApiBindingEnabled", () => {
 
   it("treats any non-'true' value as disabled", () => {
     setEnv({ NEXT_PUBLIC_API_BINDING_ENABLED: "1" });
+    expect(isApiBindingEnabled()).toBe(false);
+  });
+
+  it("defaults to ENABLED in production when neither flag is set (fail toward real API, not offline bypass)", () => {
+    setEnv({ NODE_ENV: "production" });
+    expect(isApiBindingEnabled()).toBe(true);
+  });
+
+  it("honors an explicit 'false' flag in production (deliberate pause still refuses offline bypass at the route level)", () => {
+    setEnv({ NODE_ENV: "production", NEXT_PUBLIC_API_BINDING_ENABLED: "false" });
+    expect(isApiBindingEnabled()).toBe(false);
+  });
+
+  it("honors an explicit 'true' flag in production", () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    expect(isApiBindingEnabled()).toBe(true);
+  });
+
+  it("still defaults to disabled outside production when neither flag is set", () => {
+    setEnv({ NODE_ENV: "development" });
     expect(isApiBindingEnabled()).toBe(false);
   });
 });

@@ -36,10 +36,11 @@ export default function AIFeedbackPage() {
           ],
           columns: [
             { key: "id", label: "#", type: "number" },
-            { key: "job", label: dictionary.colJob },
+            { key: "job", label: dictionary.colJob, mobile: true },
             {
               key: "rating",
               label: dictionary.rating,
+              mobile: "title",
               render: (row) => `${row.rating ?? "—"} / 5`
             },
             {
@@ -47,11 +48,12 @@ export default function AIFeedbackPage() {
               label: dictionary.helpful,
               render: (row) => (row.is_helpful ? dictionary.yes : dictionary.no)
             },
-            { key: "feedback_type", label: dictionary.colType, type: "status" },
+            { key: "feedback_type", label: dictionary.colType, type: "status", mobile: true },
             { key: "reason_codes", label: dictionary.reasons },
             {
               key: "training_consent",
               label: dictionary.training,
+              mobile: true,
               render: (row) => (row.training_consent ? dictionary.agreed : dictionary.disagreed)
             },
             {
@@ -60,7 +62,8 @@ export default function AIFeedbackPage() {
               render: (row) => (row.forwarded_to_ai_service ? dictionary.yes : dictionary.no)
             },
             { key: "created_at", label: dictionary.colDate, type: "date" }
-          ]
+          ],
+          mobileCards: true
         },
         {
           id: "webhooks",
@@ -70,18 +73,20 @@ export default function AIFeedbackPage() {
           endpoint: endpoints.admin.aiWebhookEvents,
           columns: [
             { key: "id", label: "#", type: "number" },
-            { key: "event_id", label: dictionary.eventId },
-            { key: "event_type", label: dictionary.colType, type: "status" },
+            { key: "event_id", label: dictionary.eventId, mobile: "title" },
+            { key: "event_type", label: dictionary.colType, type: "status", mobile: true },
             { key: "external_job_id", label: dictionary.externalJob },
             {
               key: "processed",
               label: dictionary.processed,
+              mobile: true,
               render: (row) => (row.processed ? dictionary.yes : dictionary.no)
             },
-            { key: "error_message", label: dictionary.errorMessage },
+            { key: "error_message", label: dictionary.errorMessage, mobile: true },
             { key: "received_at", label: dictionary.receivedAt, type: "date" },
             { key: "processed_at", label: dictionary.processedAt, type: "date" }
-          ]
+          ],
+          mobileCards: true
         }
       ]}
     />

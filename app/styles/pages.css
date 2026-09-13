@@ -390,6 +390,32 @@
   border-color: rgba(233, 61, 61, 0.28);
 }
 
+.form-success {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(24, 160, 88, 0.1);
+  color: var(--success-text, #147a45);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  border: 1px solid rgba(24, 160, 88, 0.2);
+}
+
+.login-form__alt {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+.login-form__alt a {
+  color: var(--brand, #7b2ee8);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+
+.login-form__alt a:hover {
+  text-decoration: underline;
+}
+
 .login-security {
   display: flex;
   justify-content: center;

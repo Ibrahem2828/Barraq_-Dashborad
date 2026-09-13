@@ -10,10 +10,8 @@ const baraqFont = Cairo({
   weight: ["400", "500", "600", "700", "800"]
 });
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "لوحة تحكم برّاق";
-
 export const metadata: Metadata = {
-  title: { default: appName, template: `%s | برّاق` },
+  title: { default: "لوحة تحكم برّاق", template: "%s | برّاق" },
   description: "مركز القيادة والإدارة لمنصة برّاق التعليمية",
   robots: { index: false, follow: false },
   icons: { icon: "/brand/app_icon_round.png" }

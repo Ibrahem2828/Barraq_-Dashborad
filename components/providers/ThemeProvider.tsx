@@ -12,15 +12,11 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+/** Stable SSR/client first paint — never read DOM here (ThemeScript may already have set dark). */
+const SSR_THEME: Theme = "light";
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Always start from the same fixed value the server rendered ("light",
-  // since the server has no DOM/localStorage to read). ThemeScript already
-  // sets the *real* theme on <html> before hydration to avoid a flash, but
-  // seeding this state from that already-mutated DOM here would make the
-  // client's first render diverge from the server's and trigger a hydration
-  // mismatch. The effect below corrects `theme` to the real value right
-  // after mount instead, which is a normal state update, not a hydration diff.
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>(SSR_THEME);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

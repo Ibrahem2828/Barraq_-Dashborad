@@ -25,19 +25,21 @@ export default function StudyPlansPage() {
       ]}
       columns={[
         { key: "id", label: "#", type: "number" },
-        { key: "user", label: dictionary.colUser, type: "user" },
-        { key: "title", label: dictionary.colPlanTitle },
+        { key: "user", label: dictionary.colUser, type: "user", mobile: true },
+        { key: "title", label: dictionary.colPlanTitle, mobile: "title" },
         { key: "subject_name", label: dictionary.colSubject },
         { key: "generation_type", label: dictionary.generationType, type: "status" },
-        { key: "status", label: dictionary.status, type: "status" },
+        { key: "status", label: dictionary.status, type: "status", mobile: true },
         {
           key: "completion_percentage",
           label: dictionary.completion,
+          mobile: true,
           render: (row) => `${Number(row.completion_percentage ?? 0).toFixed(0)}%`
         },
         { key: "start_date", label: dictionary.colStart, type: "date" },
         { key: "end_date", label: dictionary.colEnd, type: "date" }
       ]}
+      mobileCards
     />
   );
 }

@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { AppToaster } from "@/components/providers/AppToaster";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { NavigationProgress } from "@/components/shell/NavigationProgress";
 import { DictionaryProvider } from "@/lib/i18n/useDictionary";
@@ -20,10 +22,13 @@ export default async function LocaleLayout({
   return (
     <div dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
       <ThemeProvider>
-        <DictionaryProvider locale={locale} dictionary={dictionary}>
-          <NavigationProgress />
-          {children}
-        </DictionaryProvider>
+        <QueryProvider>
+          <DictionaryProvider locale={locale} dictionary={dictionary}>
+            <NavigationProgress />
+            {children}
+            <AppToaster />
+          </DictionaryProvider>
+        </QueryProvider>
       </ThemeProvider>
     </div>
   );

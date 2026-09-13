@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ResourcePage } from "@/components/data/ResourcePage";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { api } from "@/lib/api/client";
-import { endpoints } from "@/lib/api/endpoints";
+import { aiJobCancelEndpoint, endpoints } from "@/lib/api/endpoints";
 import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
+import { dashboardKeys } from "@/lib/query/keys";
 
 interface Metrics {
   total: number;
@@ -48,15 +49,19 @@ export function AIJobsDashboard() {
   const dictionary = useDictionary();
   const locale = useLocale();
   const numberLocale = locale === "en" ? "en-US" : "ar-SY";
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
 
-  useEffect(() => {
-    api
-      .get<Partial<Metrics>>(endpoints.admin.aiJobMetrics)
-      .then((response) => setMetrics(normalizeMetrics(response.data)))
-      .catch(() => setMetrics(null));
-  }, []);
+  const metricsQuery = useQuery({
+    queryKey: dashboardKeys.aiJobMetrics,
+    queryFn: async () => {
+      const response = await api.get<Partial<Metrics>>(endpoints.admin.aiJobMetrics);
+      return normalizeMetrics(response.data);
+    },
+    // Preserve prior UX: metrics failure is silent (no strip), no retries.
+    retry: false
+  });
 
+  // Prior catch → null: hide metrics strip on error; show empty character counts via fallback.
+  const metrics = metricsQuery.isError ? null : (metricsQuery.data ?? null);
   const safe = metrics ?? emptyMetrics;
   const counts = new Map(safe.by_character.map((item) => [item.character, item.count]));
 
@@ -117,23 +122,25 @@ export function AIJobsDashboard() {
           }
         ]}
         columns={[
-          { key: "public_id", label: dictionary.jobId },
-          { key: "character", label: dictionary.character, type: "status" },
-          { key: "task_type", label: dictionary.taskType },
-          { key: "status", label: dictionary.status, type: "status" },
+          { key: "public_id", label: dictionary.jobId, mobile: "title" },
+          { key: "character", label: dictionary.character, type: "status", mobile: true },
+          { key: "task_type", label: dictionary.taskType, mobile: true },
+          { key: "status", label: dictionary.status, type: "status", mobile: true },
           { key: "external_job_id", label: dictionary.externalJobId },
           { key: "result_type", label: dictionary.resultType },
           { key: "error_code", label: dictionary.errorCode },
           { key: "created_at", label: dictionary.createdAt, type: "date" },
           { key: "completed_at", label: dictionary.completedAt, type: "date" }
         ]}
+        mobileCards
         rowActions={[
           {
             label: dictionary.cancelJob,
             variant: "danger",
             visible: (row) => !["completed", "failed", "canceled"].includes(String(row.status)),
-            endpoint: (row) => `${endpoints.admin.aiJobs}${row.public_id}/cancel/`,
-            confirm: dictionary.cancelJobConfirm
+            endpoint: (row) => aiJobCancelEndpoint(String(row.public_id)),
+            confirm: dictionary.cancelJobConfirm,
+            successToast: dictionary.aiJobCancelled
           }
         ]}
       />

@@ -32,7 +32,7 @@
 | 🔌 الباك إند | عبر `BACKEND_API_URL` (Server-only) |
 
 ```text
-BACKEND_API_URL → http://backend:8000/api/v1 (داخل Docker Compose)
+BACKEND_API_URL → https://api.barraq.xn--mgbaab0cxheq.tech/api/v1
 ```
 
 > 📄 تغطية واجهات الـ API مفصّلة في [`DASHBOARD_API_COVERAGE.md`](./DASHBOARD_API_COVERAGE.md)
@@ -49,7 +49,7 @@ BACKEND_API_URL → http://backend:8000/api/v1 (داخل Docker Compose)
 - 🌓 **وضع فاتح / داكن** — تبديل فوري مع حفظ التفضيل (بدون وميض)
 - 📊 **جداول تشغيلية** — بحث، فلاتر، ترتيب، ترقيم صفحات، وتفاصيل سجل
 - 🤖 **مركز AI** — Jobs، Metrics، Feedback، Webhooks، ومخرجات الشخصيات
-- ⏸️ **إيقاف الربط مؤقتاً** — عبر `API_BINDING_ENABLED` دون حذف المسارات
+- 🔌 **ربط API حي** — عبر `API_BINDING_ENABLED` + `NEXT_PUBLIC_API_BINDING_ENABLED` + `BACKEND_API_URL=/api/v1` (عند التعطيل يُرفض الدخول والـ BFF بدل أي صلاحيات offline)
 - 🐳 **جاهزية النشر** — Dockerfile متعدد المراحل ومهيأ لـ Coolify
 
 ---
@@ -77,7 +77,7 @@ BACKEND_API_URL → http://backend:8000/api/v1 (داخل Docker Compose)
 | 🟦 اللغة | TypeScript 5.8 |
 | 🎨 التصميم | CSS مخصص بهوية برّاق (بدون Tailwind/shadcn) |
 | 🔤 الخط | Cairo عبر `next/font` |
-| 🔗 التكامل | BFF `/api/bff/*` → Backend Admin API |
+| 🔗 التكامل | Axios (browser + server) → Auth/BFF → Backend Admin API |
 
 ---
 
@@ -94,10 +94,10 @@ npm install
 
 | المتغير | الوصف |
 |---|---|
-| `BACKEND_API_URL` | عنوان الباك إند (Server-only) |
-| `BACKEND_API_TIMEOUT_MS` | مهلة اتصال BFF بالباك، والقيمة الافتراضية `15000` |
-| `API_BINDING_ENABLED` | `true` للربط الحي · `false` لوضع Offline stubs |
-| `NEXT_PUBLIC_API_BINDING_ENABLED` | نفس العلم للعميل |
+| `BACKEND_API_URL` | عنوان الباك إند مع `/api/v1` (Server-only) |
+| `API_BINDING_ENABLED` | `true` للربط الحي · `false` يرفض Auth/BFF (لا جلسات offline) |
+| `NEXT_PUBLIC_API_BINDING_ENABLED` | نفس العلم للعميل (يُضمَّن وقت البناء — مطلوب في Docker) |
+| `API_BINDING_FORCE_PAUSED` | ثابت في `lib/api/binding.ts` — يجب أن يكون `false` للربط الحي |
 | `AUTH_COOKIE_SECURE` | `true` مع HTTPS في الإنتاج |
 
 ### 3️⃣ التشغيل
@@ -136,7 +136,6 @@ node scripts/validate-dashboard.cjs
 ```text
 المتصفح  →  POST /api/auth/login
 السيرفر   →  POST {BACKEND_API_URL}/auth/login/
-التحقق    →  GET  {BACKEND_API_URL}/admin/me/ قبل إنشاء الجلسة
 النتيجة   →  تخزين access + refresh في Cookies آمنة
 الطلبات  →  جميع استدعاءات اللوحة عبر /api/bff/*
 ```
@@ -159,7 +158,7 @@ node scripts/validate-dashboard.cjs
 1. 📦 ارفع المشروع إلى مستودع Git خاص
 2. 🧩 أنشئ تطبيق Docker Compose في Coolify
 3. 🌐 اربط نطاق اللوحة بالخدمة `dashboard` على المنفذ `3000`
-4. 🔑 استخدم عنوان Backend الداخلي في Compose، ولا تعرضه للمتصفح
+4. 🔑 أضف `BACKEND_API_URL` كمتغير Runtime فقط
 5. 🚫 لا تضف مفاتيح OpenAI أو AI Service إلى لوحة التحكم
 6. 🔒 فعّل HTTPS قبل ضبط `AUTH_COOKIE_SECURE=true`
 

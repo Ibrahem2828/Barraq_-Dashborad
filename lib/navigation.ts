@@ -1,6 +1,6 @@
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
-export type IconName = "grid" | "users" | "shield" | "book" | "file" | "calendar" | "quiz" | "spark" | "star" | "gem" | "credit" | "support" | "history" | "health" | "chart";
+export type IconName = "grid" | "users" | "shield" | "book" | "file" | "calendar" | "quiz" | "spark" | "star" | "gem" | "credit" | "support" | "history" | "health";
 
 export interface NavItem {
   key: keyof Dictionary;
@@ -22,9 +22,26 @@ export const navigation: NavItem[] = [
   { key: "aiJobs", href: "/ai-jobs", icon: "spark", section: "ai" },
   { key: "aiFeedback", href: "/ai-feedback", icon: "star", section: "ai" },
   { key: "aiResults", href: "/ai-results", icon: "gem", section: "ai" },
-  { key: "aiUsage", href: "/ai-usage", icon: "chart", permission: "analytics.view", section: "ai" },
   { key: "subscriptions", href: "/subscriptions", icon: "credit", section: "subscriptions" },
   { key: "support", href: "/support", icon: "support", section: "support" },
   { key: "auditLogs", href: "/audit-logs", icon: "history", permission: "audit.view", section: "audit" },
   { key: "system", href: "/system", icon: "health", permission: "system.health", section: "system" }
 ];
+
+/** Resolve the navigation access rule for a dashboard pathname. */
+export function matchNavItem(pathname: string, locale: string): NavItem | undefined {
+  const base = `/${locale}`;
+  const normalized = pathname.replace(/\/+$/, "") || base;
+
+  if (normalized === base) {
+    return navigation.find((item) => item.href === "");
+  }
+
+  const matches = navigation
+    .filter((item) => item.href)
+    .map((item) => ({ item, full: `${base}${item.href}` }))
+    .filter(({ full }) => normalized === full || normalized.startsWith(`${full}/`))
+    .sort((a, b) => b.full.length - a.full.length);
+
+  return matches[0]?.item;
+}

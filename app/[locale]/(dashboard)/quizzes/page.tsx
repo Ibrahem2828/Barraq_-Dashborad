@@ -29,15 +29,16 @@ export default function QuizzesPage() {
           ],
           columns: [
             { key: "id", label: "#", type: "number" },
-            { key: "user", label: dictionary.colUser, type: "user" },
-            { key: "title", label: dictionary.colQuiz },
+            { key: "user", label: dictionary.colUser, type: "user", mobile: true },
+            { key: "title", label: dictionary.colQuiz, mobile: "title" },
             { key: "subject_name", label: dictionary.colSubject },
-            { key: "difficulty_level", label: dictionary.difficulty, type: "status" },
+            { key: "difficulty_level", label: dictionary.difficulty, type: "status", mobile: true },
             { key: "generation_type", label: dictionary.generationType, type: "status" },
             { key: "questions_count", label: dictionary.questionsCount, type: "number" },
             { key: "attempts_count", label: dictionary.attemptsCount, type: "number" },
-            { key: "status", label: dictionary.status, type: "status" }
-          ]
+            { key: "status", label: dictionary.status, type: "status", mobile: true }
+          ],
+          mobileCards: true
         },
         {
           id: "attempts",
@@ -47,12 +48,13 @@ export default function QuizzesPage() {
           endpoint: endpoints.admin.quizAttempts,
           columns: [
             { key: "id", label: "#", type: "number" },
-            { key: "user", label: dictionary.colUser, type: "user" },
-            { key: "quiz_title", label: dictionary.colQuiz },
-            { key: "status", label: dictionary.status, type: "status" },
+            { key: "user", label: dictionary.colUser, type: "user", mobile: true },
+            { key: "quiz_title", label: dictionary.colQuiz, mobile: "title" },
+            { key: "status", label: dictionary.status, type: "status", mobile: true },
             {
               key: "percentage",
               label: dictionary.percentage,
+              mobile: true,
               render: (row) => `${Number(row.percentage ?? 0).toFixed(1)}%`
             },
             { key: "correct_answers_count", label: dictionary.correct, type: "number" },
@@ -63,7 +65,8 @@ export default function QuizzesPage() {
               render: (row) => `${Math.round(Number(row.duration_seconds ?? 0) / 60)} ${dictionary.minutesShort}`
             },
             { key: "submitted_at", label: dictionary.submittedAt, type: "date" }
-          ]
+          ],
+          mobileCards: true
         }
       ]}
     />

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, type CSSProperties } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,7 +11,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
+import { isUnauthorizedError } from "@/lib/auth/session-expired";
 import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
+import { dashboardKeys } from "@/lib/query/keys";
 import type { Overview } from "@/types/api";
 
 function Ring({ value, label }: { value: number; label: string }) {
@@ -29,32 +32,32 @@ export function OverviewDashboard() {
   const dictionary = useDictionary();
   const locale = useLocale();
   const numberLocale = locale === "en" ? "en-US" : "ar-SY";
-  const [data, setData] = useState<Overview | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    api
-      .get<Overview>(endpoints.admin.overview)
-      .then((response) => {
-        if (alive) {
-          setData(response.data);
-          setError(null);
-        }
-      })
-      .catch((reason: unknown) => {
-        if (alive) setError(reason instanceof Error ? reason.message : dictionary.overviewLoadFailed);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [revision, dictionary.overviewLoadFailed]);
+  const result = useQuery({
+    queryKey: dashboardKeys.overview,
+    queryFn: async () => {
+      const response = await api.get<Overview>(endpoints.admin.overview);
+      return response.data;
+    },
+    retry: (failureCount, reason) => {
+      if (isUnauthorizedError(reason)) return false;
+      return failureCount < 1;
+    }
+  });
+
+  const reload = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview });
+  }, [queryClient]);
+
+  const loading = result.isFetching;
+  const data = result.data ?? null;
+  const error =
+    result.error && !isUnauthorizedError(result.error)
+      ? result.error instanceof Error
+        ? result.error.message
+        : dictionary.overviewLoadFailed
+      : null;
 
   if (loading) {
     return (
@@ -71,7 +74,7 @@ export function OverviewDashboard() {
     return (
       <>
         <PageHeader title={dictionary.overview} description={dictionary.overviewDesc} />
-        <ErrorState message={error ?? dictionary.noData} onRetry={() => setRevision((value) => value + 1)} />
+        <ErrorState message={error ?? dictionary.noData} onRetry={reload} />
       </>
     );
   }
@@ -87,7 +90,7 @@ export function OverviewDashboard() {
         title={dictionary.commandCenterTitle}
         description={dictionary.commandCenterDesc}
         actions={
-          <Button variant="secondary" onClick={() => setRevision((value) => value + 1)}>
+          <Button variant="secondary" onClick={reload}>
             <Icon name="refresh" />
             {dictionary.refreshData}
           </Button>

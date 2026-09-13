@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { navigation, type NavItem } from "@/lib/navigation";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -21,6 +22,8 @@ const navGroups: Array<{ id: string; labelKey: keyof Dictionary; keys: Array<Nav
   { id: "system", labelKey: "navSystem", keys: ["system"] }
 ];
 
+const MOBILE_SHELL_MQ = "(max-width: 820px)";
+
 export function Sidebar({
   locale,
   dictionary,
@@ -36,12 +39,41 @@ export function Sidebar({
   const { admin, loading, can } = useAdmin();
   const base = `/${locale}`;
 
-  const visibleItems = navigation.filter((item) => loading || can(item.permission, item.section));
+  const visibleItems = navigation.filter((item) => !loading && can(item.permission, item.section));
   const visibleByKey = new Map(visibleItems.map((item) => [item.key, item]));
+
+  useEffect(() => {
+    if (!open) return;
+
+    const mq = window.matchMedia(MOBILE_SHELL_MQ);
+
+    const syncBodyLock = () => {
+      // Desktop keeps normal scroll even if open state lingers after resize.
+      document.body.style.overflow = mq.matches ? "hidden" : "";
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && mq.matches) onClose();
+    };
+
+    syncBodyLock();
+    mq.addEventListener("change", syncBodyLock);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      mq.removeEventListener("change", syncBodyLock);
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [open, onClose]);
 
   return (
     <>
-      <aside className={`sidebar ${open ? "sidebar--open" : ""}`} aria-label={dictionary.sidebarNav}>
+      <aside
+        id="dashboard-sidebar"
+        className={`sidebar ${open ? "sidebar--open" : ""}`}
+        aria-label={dictionary.sidebarNav}
+      >
         <div className="sidebar__brand">
           <div className="sidebar__brand-logo">
             <Image src="/brand/logo-light-removebg-preview.png" width={56} height={56} alt="برّاق" priority />

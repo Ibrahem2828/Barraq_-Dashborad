@@ -1,8 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api, ApiRequestError } from "@/lib/api/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createContext, useCallback, useContext, useMemo } from "react";
+import { authApi } from "@/lib/api/auth-client";
+import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
+import { beginSessionExpiredRedirect, isUnauthorizedError } from "@/lib/auth/session-expired";
+import { adminKeys } from "@/lib/query/keys";
 import type { AdminMe } from "@/types/api";
 
 interface AdminContextValue {
@@ -15,43 +19,73 @@ interface AdminContextValue {
 
 const AdminContext = createContext<AdminContextValue | null>(null);
 
+/** Thrown when session gate fails and a login redirect was started (not a user-facing load error). */
+class SessionGateError extends Error {
+  constructor() {
+    super("SESSION_GATE");
+    this.name = "SessionGateError";
+  }
+}
+
+function isSessionGateError(reason: unknown): boolean {
+  return reason instanceof SessionGateError;
+}
+
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [admin, setAdmin] = useState<AdminMe | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    api.get<AdminMe>(endpoints.admin.me)
-      .then((response) => { if (alive) { setAdmin(response.data); setError(null); } })
-      .catch((reason: unknown) => {
-        if (!alive) return;
-        setAdmin(null);
-        setError(reason instanceof Error ? reason.message : "تعذر تحميل صلاحيات الحساب");
-        if (reason instanceof ApiRequestError && (reason.status === 401 || reason.status === 403)) {
-          const locale = window.location.pathname.split("/")[1] === "en" ? "en" : "ar";
-          window.location.replace(`/${locale}/login?reason=session`);
-        }
-      })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [revision]);
-
-  const value = useMemo<AdminContextValue>(() => ({
-    admin,
-    loading,
-    error,
-    can(permission, section) {
-      if (!admin) return false;
-      if (admin.is_superuser) return true;
-      if (permission && admin.permissions.includes(permission)) return true;
-      if (section && admin.allowed_sections[section]) return true;
-      return !permission && !section;
+  const result = useQuery({
+    queryKey: adminKeys.me,
+    queryFn: async () => {
+      // Keep serial gate: session must pass before loading RBAC profile.
+      const sessionPayload = await authApi.session();
+      const authenticated = Boolean(sessionPayload?.data?.authenticated);
+      const verified = Boolean(sessionPayload?.data?.verified);
+      const unreachable = Boolean(sessionPayload?.data?.unreachable);
+      if (!authenticated || (!verified && !unreachable)) {
+        beginSessionExpiredRedirect();
+        throw new SessionGateError();
+      }
+      const response = await api.get<AdminMe>(endpoints.admin.me);
+      return response.data;
     },
-    reload: () => setRevision((value) => value + 1)
-  }), [admin, loading, error]);
+    // Auth/RBAC must not serve a previous user's cached profile.
+    staleTime: 0,
+    retry: (failureCount, reason) => {
+      if (isUnauthorizedError(reason) || isSessionGateError(reason)) return false;
+      return failureCount < 1;
+    }
+  });
+
+  const reload = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: adminKeys.me });
+  }, [queryClient]);
+
+  const admin = result.data ?? null;
+  const loading = result.isFetching;
+  const error =
+    result.error && !isUnauthorizedError(result.error) && !isSessionGateError(result.error)
+      ? result.error instanceof Error
+        ? result.error.message
+        : "تعذر تحميل صلاحيات الحساب"
+      : null;
+
+  const value = useMemo<AdminContextValue>(
+    () => ({
+      admin,
+      loading,
+      error,
+      can(permission, section) {
+        if (!admin) return false;
+        if (admin.is_superuser) return true;
+        if (permission && admin.permissions.includes(permission)) return true;
+        if (section && admin.allowed_sections[section]) return true;
+        return !permission && !section;
+      },
+      reload
+    }),
+    [admin, loading, error, reload]
+  );
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }

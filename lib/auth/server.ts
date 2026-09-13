@@ -1,14 +1,14 @@
 import "server-only";
 
 import { cookies, headers } from "next/headers";
+import { backendJson } from "@/lib/api/backend-http";
 import { isApiBindingEnabled } from "@/lib/api/binding";
-import { backendFetch, getBackendUrl } from "@/lib/api/backend";
 import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
+
+export { getBackendUrl } from "@/lib/api/backend-http";
 
 const cookieSecure = (process.env.AUTH_COOKIE_SECURE ?? "true").toLowerCase() === "true";
 const cookieDomain = process.env.AUTH_COOKIE_DOMAIN || undefined;
-
-export { backendFetch, getBackendUrl };
 
 export function cookieOptions(httpOnly = true) {
   return {
@@ -41,18 +41,17 @@ export async function refreshAccessToken(): Promise<string | null> {
   const refresh = store.get(REFRESH_COOKIE)?.value;
   if (!refresh) return null;
 
-  // Binding paused: keep offline session without hitting backend.
+  // Binding paused: never invent or prolong offline tokens.
   if (!isApiBindingEnabled()) {
-    return store.get(ACCESS_COOKIE)?.value ?? "offline-access";
+    return null;
   }
 
-  const response = await backendFetch("auth/refresh/", {
+  const response = await backendJson<Record<string, unknown>>("auth/refresh/", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ refresh })
+    data: { refresh }
   });
-  if (!response.ok) return null;
-  const payload = await response.json() as Record<string, unknown>;
+  if (response.status < 200 || response.status >= 300) return null;
+  const payload = (response.data && typeof response.data === "object" ? response.data : {}) as Record<string, unknown>;
   const data = (payload.data && typeof payload.data === "object" ? payload.data : payload) as Record<string, unknown>;
   const access = typeof data.access === "string" ? data.access : typeof data.access_token === "string" ? data.access_token : null;
   const nextRefresh = typeof data.refresh === "string" ? data.refresh : refresh;

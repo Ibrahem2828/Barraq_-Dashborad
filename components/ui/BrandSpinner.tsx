@@ -36,27 +36,8 @@ export function BrandLoadingScreen({ message }: { message?: string }) {
   const dictionary = useDictionary();
 
   return (
-    <div className="brand-loading-screen" role="status" aria-live="polite" aria-busy="true">
-      <div className="brand-loading-screen__smoke" aria-hidden="true">
-        <span className="brand-loading-screen__smoke-orb brand-loading-screen__smoke-orb--purple" />
-        <span className="brand-loading-screen__smoke-orb brand-loading-screen__smoke-orb--blue" />
-        <span className="brand-loading-screen__smoke-orb brand-loading-screen__smoke-orb--pink" />
-        <span className="brand-loading-screen__smoke-orb brand-loading-screen__smoke-orb--gold" />
-      </div>
-      <div className="brand-loading-screen__mark">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo-light-removebg-preview.png"
-          alt=""
-          className="brand-loading-screen__logo"
-          width="168"
-          height="96"
-          decoding="async"
-        />
-        <strong className="brand-loading-screen__name">{dictionary.brandName}</strong>
-        <p>{message ?? dictionary.preparingDashboard}</p>
-        <div className="brand-loading-screen__bar" aria-hidden="true" />
-      </div>
+    <div className="standalone-state brand-loading-screen">
+      <BrandSpinner size="lg" label={message ?? dictionary.preparingDashboard} />
     </div>
   );
 }

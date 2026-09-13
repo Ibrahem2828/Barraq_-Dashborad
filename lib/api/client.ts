@@ -1,19 +1,10 @@
 "use client";
 
-import { isApiBindingEnabled, offlineStubForPath } from "@/lib/api/binding";
-import { getErrorMessage, normalizeEnvelope } from "@/lib/api/normalize";
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
+import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
+import { beginSessionExpiredRedirect } from "@/lib/auth/session-expired";
+import { normalizeEnvelope, toApiError } from "@/lib/api/normalize";
 import type { ApiEnvelope } from "@/types/api";
-
-export class ApiRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string
-  ) {
-    super(message);
-    this.name = "ApiRequestError";
-  }
-}
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -22,58 +13,85 @@ function readCookie(name: string): string | null {
   return part ? decodeURIComponent(part.slice(prefix.length)) : null;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<ApiEnvelope<T>> {
-  const method = (init.method ?? "GET").toUpperCase();
-
-  // Binding paused: keep call sites intact, skip network.
-  if (!isApiBindingEnabled()) {
-    return normalizeEnvelope<T>(offlineStubForPath(path, method));
+const http = axios.create({
+  baseURL: "/api/bff",
+  withCredentials: true,
+  headers: {
+    Accept: "application/json"
   }
+});
 
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
+http.interceptors.request.use((config) => {
+  const method = (config.method ?? "get").toUpperCase();
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     const csrf = readCookie("baraq_csrf");
-    if (csrf) headers.set("X-CSRF-Token", csrf);
+    if (csrf) {
+      config.headers.set("X-CSRF-Token", csrf);
+    }
+  }
+  if (config.data !== undefined && !(config.data instanceof FormData)) {
+    config.headers.set("Content-Type", "application/json");
+  }
+  return config;
+});
+
+async function request<T>(path: string, config: AxiosRequestConfig = {}): Promise<ApiEnvelope<T>> {
+  const method = (config.method ?? "GET").toUpperCase();
+  const cleanPath = path.replace(/^\/+/, "");
+
+  if (!isApiBindingEnabled()) {
+    throw toApiError(bindingDisabledPayload(), 503);
   }
 
-  const response = await fetch(`/api/bff/${path.replace(/^\/+/, "")}`, {
-    ...init,
-    method,
-    headers,
-    credentials: "same-origin",
-    cache: "no-store"
-  });
+  try {
+    const response = await http.request<unknown>({
+      ...config,
+      url: cleanPath,
+      method,
+      // Avoid stale dashboard lists while operating.
+      headers: {
+        ...config.headers,
+        "Cache-Control": "no-store"
+      }
+    });
 
-  const contentType = response.headers.get("content-type") ?? "";
-  const payload: unknown = contentType.includes("application/json")
-    ? await response.json()
-    : { message: await response.text() };
-
-  if (!response.ok) {
-    const code = payload && typeof payload === "object" && "code" in payload
-      ? String((payload as { code?: unknown }).code ?? "") || undefined
-      : undefined;
-    throw new ApiRequestError(getErrorMessage(payload, `HTTP ${response.status}`), response.status, code);
+    const payload = response.data;
+    const envelope = normalizeEnvelope<T>(payload);
+    if (envelope.success === false) {
+      if (response.status === 401) beginSessionExpiredRedirect();
+      throw toApiError(payload, response.status);
+    }
+    return envelope;
+  } catch (reason) {
+    if (reason instanceof AxiosError) {
+      if (reason.code === "ERR_NETWORK" || reason.message === "Network Error") {
+        throw toApiError({ message: "تعذر الاتصال بالخادم", code: "network_error" }, 0);
+      }
+      const status = reason.response?.status ?? 0;
+      const payload = reason.response?.data ?? { message: reason.message };
+      if (status === 401) beginSessionExpiredRedirect();
+      throw toApiError(payload, status);
+    }
+    throw reason;
   }
-  return normalizeEnvelope<T>(payload);
 }
 
 export const api = {
   get<T>(path: string, params?: Record<string, string | number | boolean | undefined>) {
-    const query = new URLSearchParams();
+    const query: Record<string, string> = {};
     Object.entries(params ?? {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== "") query.set(key, String(value));
+      if (value !== undefined && value !== "") query[key] = String(value);
     });
-    const suffix = query.size ? `?${query.toString()}` : "";
-    return request<T>(`${path}${suffix}`);
+    return request<T>(path, { method: "GET", params: query });
   },
   post<T>(path: string, body?: unknown) {
-    return request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+    return request<T>(path, { method: "POST", data: body });
   },
   patch<T>(path: string, body: unknown) {
-    return request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+    return request<T>(path, { method: "PATCH", data: body });
+  },
+  put<T>(path: string, body: unknown) {
+    return request<T>(path, { method: "PUT", data: body });
   },
   delete<T>(path: string) {
     return request<T>(path, { method: "DELETE" });

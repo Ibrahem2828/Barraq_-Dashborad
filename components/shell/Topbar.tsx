@@ -1,31 +1,33 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAdmin } from "@/components/providers/AdminProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { ChangePasswordModal } from "@/components/shell/ChangePasswordModal";
 import { Icon } from "@/components/ui/Icon";
+import { authApi } from "@/lib/api/auth-client";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/types/api";
-
-function readCookie(name: string) {
-  const part = document.cookie.split("; ").find((item) => item.startsWith(`${name}=`));
-  return part ? decodeURIComponent(part.split("=").slice(1).join("=")) : "";
-}
 
 export function Topbar({
   locale,
   dictionary,
-  onMenu
+  onMenu,
+  menuOpen = false
 }: {
   locale: Locale;
   dictionary: Dictionary;
   onMenu: () => void;
+  menuOpen?: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { admin } = useAdmin();
   const { theme, toggleTheme } = useTheme();
   const [busy, setBusy] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const switchLocale = () => {
     const current = window.location.pathname;
@@ -38,12 +40,10 @@ export function Topbar({
   const logout = async () => {
     setBusy(true);
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { "X-CSRF-Token": readCookie("baraq_csrf") },
-        credentials: "same-origin"
-      });
+      await authApi.logout();
     } finally {
+      // Drop all server-state so the next login cannot reuse RBAC/list caches.
+      queryClient.clear();
       router.replace(`/${locale}/login`);
       router.refresh();
       setBusy(false);
@@ -55,86 +55,107 @@ export function Topbar({
   const roleLabel = admin?.role || (admin?.is_superuser ? "Super Admin" : "Admin");
 
   return (
-    <header className="topbar">
-      <div className="topbar__bar" aria-hidden="true" />
+    <>
+      <header className="topbar">
+        <div className="topbar__bar" aria-hidden="true" />
 
-      <div className="topbar__start">
-        <button type="button" className="icon-button topbar__menu" onClick={onMenu} aria-label={dictionary.menu}>
-          <Icon name="menu" />
-        </button>
-
-        <label className="topbar__search">
-          <span className="topbar__search-icon" aria-hidden="true">
-            <Icon name="search" />
-          </span>
-          <input type="search" placeholder={dictionary.search} aria-label={dictionary.search} />
-          <kbd className="topbar__search-kbd">
-            <span>⌘</span>
-            <span>K</span>
-          </kbd>
-        </label>
-      </div>
-
-      <div className="topbar__end">
-        <div className="topbar__tools" role="group" aria-label={dictionary.quickTools}>
+        <div className="topbar__start">
           <button
             type="button"
-            className="topbar__tool topbar__tool--lang"
-            onClick={switchLocale}
-            aria-label={locale === "ar" ? dictionary.switchToEnglish : dictionary.switchToArabic}
-            title={locale === "ar" ? "English" : "العربية"}
+            className="icon-button topbar__menu"
+            onClick={onMenu}
+            aria-label={dictionary.menu}
+            aria-expanded={menuOpen}
+            aria-controls="dashboard-sidebar"
           >
-            <span className="topbar__tool-label">{locale === "ar" ? "EN" : "ع"}</span>
+            <Icon name="menu" />
           </button>
 
-          <button
-            type="button"
-            className="topbar__tool"
-            onClick={toggleTheme}
-            aria-label={dictionary.toggleTheme}
-            title={theme === "dark" ? dictionary.lightMode : dictionary.darkMode}
-          >
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
-          </button>
-
-          <button
-            type="button"
-            className="topbar__tool notification-button"
-            aria-label={dictionary.notifications}
-            title={dictionary.notifications}
-          >
-            <Icon name="bell" />
-            <span className="notification-button__dot" aria-hidden="true" />
-          </button>
+          <label className="topbar__search">
+            <span className="topbar__search-icon" aria-hidden="true">
+              <Icon name="search" />
+            </span>
+            <input type="search" placeholder={dictionary.search} aria-label={dictionary.search} />
+            <kbd className="topbar__search-kbd">
+              <span>⌘</span>
+              <span>K</span>
+            </kbd>
+          </label>
         </div>
 
-        <div className="topbar__user">
-          <div className="topbar__identity" title={admin?.email ?? displayName}>
-            <span className="avatar topbar__avatar" aria-hidden="true">
-              {initial}
-            </span>
-            <div className="topbar__identity-text">
-              <strong>{displayName}</strong>
-              <small>
-                <span className="topbar__role">{roleLabel}</span>
-                {admin?.email ? <span className="topbar__email">{admin.email}</span> : null}
-              </small>
-            </div>
+        <div className="topbar__end">
+          <div className="topbar__tools" role="group" aria-label={dictionary.quickTools}>
+            <button
+              type="button"
+              className="topbar__tool topbar__tool--lang"
+              onClick={switchLocale}
+              aria-label={locale === "ar" ? dictionary.switchToEnglish : dictionary.switchToArabic}
+              title={locale === "ar" ? "English" : "العربية"}
+            >
+              <span className="topbar__tool-label">{locale === "ar" ? "EN" : "ع"}</span>
+            </button>
+
+            <button
+              type="button"
+              className="topbar__tool"
+              onClick={toggleTheme}
+              aria-label={dictionary.toggleTheme}
+              title={theme === "dark" ? dictionary.lightMode : dictionary.darkMode}
+            >
+              <Icon name={theme === "dark" ? "sun" : "moon"} />
+            </button>
+
+            <button
+              type="button"
+              className="topbar__tool"
+              onClick={() => setPasswordOpen(true)}
+              aria-label={dictionary.changePassword}
+              title={dictionary.changePassword}
+            >
+              <Icon name="shield" />
+            </button>
+
+            <button
+              type="button"
+              className="topbar__tool notification-button"
+              aria-label={dictionary.notifications}
+              title={dictionary.notifications}
+            >
+              <Icon name="bell" />
+              <span className="notification-button__dot" aria-hidden="true" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            className="topbar__logout"
-            onClick={logout}
-            disabled={busy}
-            aria-busy={busy}
-            title={dictionary.logout}
-          >
-            <Icon name="logout" />
-            <span>{dictionary.logout}</span>
-          </button>
+          <div className="topbar__user">
+            <div className="topbar__identity" title={admin?.email ?? displayName}>
+              <span className="avatar topbar__avatar" aria-hidden="true">
+                {initial}
+              </span>
+              <div className="topbar__identity-text">
+                <strong>{displayName}</strong>
+                <small>
+                  <span className="topbar__role">{roleLabel}</span>
+                  {admin?.email ? <span className="topbar__email">{admin.email}</span> : null}
+                </small>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="topbar__logout"
+              onClick={logout}
+              disabled={busy}
+              aria-busy={busy}
+              title={dictionary.logout}
+            >
+              <Icon name="logout" />
+              <span>{dictionary.logout}</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
+    </>
   );
 }
