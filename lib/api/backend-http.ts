@@ -9,9 +9,8 @@ export function getBackendUrl(path: string): string {
   return `${backendBase}/${clean}`;
 }
 
-/** Server-side axios for upstream Admin API calls (auth routes + BFF). Uses the fetch adapter so it goes through the runtime's global fetch (Next.js/Node's native implementation, or a test's stubbed one) instead of opening raw sockets itself. */
+/** Server-side axios for upstream Admin API calls (auth routes + BFF). */
 export const backendHttp = axios.create({
-  adapter: "fetch",
   timeout: 45_000,
   // Mirror fetch: callers inspect status themselves.
   validateStatus: () => true,

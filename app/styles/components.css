@@ -827,7 +827,7 @@
 
 .resource-form__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: end;
   gap: 10px;
   margin-top: 6px;
 }
@@ -1074,7 +1074,7 @@
 .status-summary {
   display: flex;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: end;
   flex-wrap: wrap;
   min-width: 0;
 }

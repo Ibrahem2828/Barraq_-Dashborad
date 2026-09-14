@@ -38,18 +38,17 @@ export function normalizeList<T>(payload: ListPayload<T>): Paginated<T> {
   return payload;
 }
 
-/** Surfaces the first backend field-validation message, without the field-name prefix (end users see the message, not the API's internal field key). */
 function formatFieldErrors(errors: unknown): string | null {
   if (!errors || typeof errors !== "object") return null;
-  for (const value of Object.values(errors as Record<string, unknown>)) {
-    if (typeof value === "string" && value.trim()) return value;
-    if (Array.isArray(value) && value.length) return String(value[0]);
-    if (value && typeof value === "object") {
-      const nested = formatFieldErrors(value);
-      if (nested) return nested;
-    }
-  }
-  return null;
+  const entries = Object.entries(errors as Record<string, unknown>)
+    .map(([key, value]) => {
+      if (typeof value === "string") return `${key}: ${value}`;
+      if (Array.isArray(value)) return `${key}: ${value.map(String).join(", ")}`;
+      if (value && typeof value === "object") return `${key}: ${JSON.stringify(value)}`;
+      return null;
+    })
+    .filter(Boolean);
+  return entries.length ? entries.join(" · ") : null;
 }
 
 export function getErrorMessage(payload: unknown, fallback = "تعذر تنفيذ الطلب"): string {
