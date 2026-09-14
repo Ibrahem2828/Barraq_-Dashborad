@@ -23,6 +23,7 @@ export const endpoints = {
     aiRecommendations: "admin/ai-recommendations/",
     aiSummaries: "admin/ai-summaries/",
     aiTranscriptions: "admin/ai-transcriptions/",
+    aiUsage: "admin/ai-usage/",
     supportTickets: "admin/support-tickets/",
     subscriptionPlans: "admin/subscription-plans/",
     userSubscriptions: "admin/user-subscriptions/",

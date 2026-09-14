@@ -17,20 +17,27 @@ function flagTrue(value: string | undefined): boolean {
   return (value ?? "false").toLowerCase() === "true";
 }
 
+/** In production, an unconfigured flag defaults to enabled (fail toward the real API, not an offline bypass); elsewhere it defaults to disabled. */
+function defaultFlag(): string {
+  return process.env.NODE_ENV === "production" ? "true" : "false";
+}
+
 /**
- * Binding is enabled only when every relevant flag says so.
- * Server: both API_BINDING_ENABLED and NEXT_PUBLIC_API_BINDING_ENABLED must be true
- * so a false public bake cannot produce a half-live privileged mode.
- * Browser: only NEXT_PUBLIC_API_BINDING_ENABLED is available (inlined at build).
+ * Binding is enabled based on whichever relevant flag is explicitly set.
+ * Server: NEXT_PUBLIC_API_BINDING_ENABLED wins when set (even "false", so a
+ * deliberate pause is honored); otherwise falls back to API_BINDING_ENABLED;
+ * otherwise defaults per NODE_ENV.
+ * Browser: only NEXT_PUBLIC_API_BINDING_ENABLED is available (inlined at build),
+ * falling back to the same NODE_ENV default when unset.
  */
 export function isApiBindingEnabled(): boolean {
   if (API_BINDING_FORCE_PAUSED) return false;
 
-  const publicOn = flagTrue(process.env.NEXT_PUBLIC_API_BINDING_ENABLED);
-  if (typeof window !== "undefined") return publicOn;
+  const publicRaw = process.env.NEXT_PUBLIC_API_BINDING_ENABLED;
+  if (typeof window !== "undefined") return flagTrue(publicRaw ?? defaultFlag());
 
-  const serverOn = flagTrue(process.env.API_BINDING_ENABLED);
-  return serverOn && publicOn;
+  const serverRaw = process.env.API_BINDING_ENABLED;
+  return flagTrue(publicRaw ?? serverRaw ?? defaultFlag());
 }
 
 export function bindingDisabledPayload() {

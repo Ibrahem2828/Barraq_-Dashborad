@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { EmptyState, LoadingState } from "@/components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
+import { isUnauthorizedError } from "@/lib/auth/session-expired";
 import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
+import { dashboardKeys } from "@/lib/query/keys";
 
 interface DailyPoint {
   date: string;
@@ -67,32 +70,56 @@ export function AIUsageDashboard() {
   const dictionary = useDictionary();
   const locale = useLocale();
   const numberLocale = locale === "en" ? "en-US" : "ar-SY";
-  const [summary, setSummary] = useState<UsageSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    api
-      .get<Partial<UsageSummary>>(endpoints.admin.aiUsage, { days: 30 })
-      .then((response) => {
-        if (!cancelled) setSummary(normalize(response.data));
-      })
-      .catch(() => {
-        if (!cancelled) setSummary(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const result = useQuery({
+    queryKey: dashboardKeys.aiUsage,
+    queryFn: async () => {
+      const response = await api.get<Partial<UsageSummary>>(endpoints.admin.aiUsage, { days: 30 });
+      return normalize(response.data);
+    },
+    retry: (failureCount, reason) => {
+      if (isUnauthorizedError(reason)) return false;
+      return failureCount < 1;
+    }
+  });
 
-  const safe = summary ?? emptySummary;
+  const reload = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.aiUsage });
+  }, [queryClient]);
+
+  const loading = result.isFetching;
+  const error =
+    result.error && !isUnauthorizedError(result.error)
+      ? result.error instanceof Error
+        ? result.error.message
+        : dictionary.loadFailed
+      : null;
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title={dictionary.aiUsage} description={dictionary.aiUsageDesc} />
+        <Card>
+          <LoadingState />
+        </Card>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <PageHeader title={dictionary.aiUsage} description={dictionary.aiUsageDesc} />
+        <ErrorState message={error} onRetry={reload} />
+      </>
+    );
+  }
+
+  const safe = result.data ?? emptySummary;
   const formatUsd = (value: number) => `$${value.toLocaleString(numberLocale, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
   const maxDailyCost = Math.max(1e-9, ...safe.daily.map((point) => point.cost_usd));
-  const hasData = !loading && safe.totals.job_count > 0;
+  const hasData = safe.totals.job_count > 0;
 
   return (
     <>
@@ -116,9 +143,7 @@ export function AIUsageDashboard() {
         </div>
       </Card>
 
-      {loading ? (
-        <LoadingState />
-      ) : !hasData ? (
+      {!hasData ? (
         <EmptyState title={dictionary.aiUsageNoData} description={dictionary.aiUsageDesc} />
       ) : (
         <div className="ai-usage-grid">

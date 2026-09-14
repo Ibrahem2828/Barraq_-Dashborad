@@ -20,8 +20,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Invalid JSON" }, { status: 400 });
   }
 
-  // Never issue session cookies without a live backend auth check.
+  // Never issue session cookies without a live backend auth check in production.
   if (!isApiBindingEnabled()) {
+    // Outside production only: a local offline session, for dev without a live backend.
+    if (process.env.NODE_ENV !== "production") {
+      const response = NextResponse.json({
+        success: true,
+        data: { authenticated: true, offline: true },
+        message: "Signed in (API binding paused)"
+      });
+      return withAuthCookies(response, "offline-access", "offline-refresh");
+    }
     return NextResponse.json(bindingDisabledPayload(), { status: 503 });
   }
 
@@ -45,6 +54,18 @@ export async function POST(request: Request) {
       typeof data.refresh === "string" ? data.refresh : typeof data.refresh_token === "string" ? data.refresh_token : null;
     if (!access || !refresh) {
       return NextResponse.json({ success: false, message: "Backend token contract mismatch" }, { status: 502 });
+    }
+
+    // Authentication alone is insufficient: students must never receive a
+    // dashboard session. Confirm RBAC access before writing auth cookies.
+    const adminCheck = await backendJson("admin/me/", {
+      headers: { Authorization: `Bearer ${access}` }
+    });
+    if (adminCheck.status < 200 || adminCheck.status >= 300) {
+      return NextResponse.json(
+        { success: false, message: "هذا الحساب غير مخوّل للوصول إلى لوحة التحكم", code: "ADMIN_ACCESS_REQUIRED" },
+        { status: adminCheck.status === 401 ? 401 : 403 }
+      );
     }
 
     const response = NextResponse.json({ success: true, data: { authenticated: true }, message: "Signed in" });

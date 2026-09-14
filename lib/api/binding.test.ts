@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isApiBindingEnabled, offlineStubForPath } from "./binding";
+import { bindingDisabledPayload, isApiBindingEnabled } from "./binding";
 
 const ENV_KEYS = ["NEXT_PUBLIC_API_BINDING_ENABLED", "API_BINDING_ENABLED", "NODE_ENV"] as const;
 type EnvSnapshot = Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>;
@@ -68,42 +68,11 @@ describe("isApiBindingEnabled", () => {
   });
 });
 
-describe("offlineStubForPath", () => {
-  it("returns a fixed offline admin identity for admin/me/", () => {
-    const stub = offlineStubForPath("admin/me/");
-    expect(stub.success).toBe(true);
-    expect((stub.data as { role: string }).role).toBe("offline");
-  });
-
-  it("normalizes leading slashes, trailing slashes, and query strings to the same key", () => {
-    const a = offlineStubForPath("admin/me/");
-    const b = offlineStubForPath("/admin/me");
-    const c = offlineStubForPath("admin/me?foo=bar");
-    expect(a).toEqual(b);
-    expect(a).toEqual(c);
-  });
-
-  it("returns the shared empty-list stub for an unrecognized read path", () => {
-    const stub = offlineStubForPath("some/unknown/list/");
-    expect(stub.data).toEqual({ count: 0, next: null, previous: null, results: [] });
-  });
-
-  it("returns a generic 'paused' stub for any mutation, regardless of path", () => {
-    const stub = offlineStubForPath("admin/users/1/suspend/", "POST");
-    expect(stub.success).toBe(true);
-    expect(stub.data).toEqual({ paused: true, path: "admin/users/1/suspend/" });
-  });
-
-  it("treats HEAD like GET (a real read), not like a mutation", () => {
-    const stub = offlineStubForPath("admin/overview/", "HEAD");
-    expect((stub.data as { system_health: unknown }).system_health).toBeDefined();
-  });
-
-  it("returns the AI usage stub shape with the fields the AIUsageDashboard component reads", () => {
-    const stub = offlineStubForPath("admin/ai-usage/");
-    const data = stub.data as { totals: { cost_usd: number }; daily: unknown[]; by_character: unknown[] };
-    expect(data.totals.cost_usd).toBe(0);
-    expect(Array.isArray(data.daily)).toBe(true);
-    expect(Array.isArray(data.by_character)).toBe(true);
+describe("bindingDisabledPayload", () => {
+  it("returns a generic disabled envelope with no privileged data (paused mode no longer serves offline stubs)", () => {
+    const payload = bindingDisabledPayload();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe("api_binding_disabled");
+    expect(payload.data).toEqual({ authenticated: false, verified: false });
   });
 });
