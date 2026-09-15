@@ -1,15 +1,23 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { backendJson, logBackendFailure } from "@/lib/api/backend-http";
+import {
+  backendJson,
+  logBackendFailure,
+  logBackendResponseFailure,
+} from "@/lib/api/backend-http";
 import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import { clearAuthCookies, refreshAccessToken } from "@/lib/auth/server";
+import { authJson } from "@/lib/auth/response";
 
 export async function POST(request: Request) {
   let bodyToken: string | null = null;
   try {
     const body = await request.json().catch(() => null);
-    if (body && typeof body === "object" && typeof (body as Record<string, unknown>).token === "string") {
+    if (
+      body &&
+      typeof body === "object" &&
+      typeof (body as Record<string, unknown>).token === "string"
+    ) {
       bodyToken = String((body as Record<string, unknown>).token);
     }
   } catch {
@@ -18,7 +26,7 @@ export async function POST(request: Request) {
 
   if (!isApiBindingEnabled()) {
     await clearAuthCookies();
-    return NextResponse.json(bindingDisabledPayload(), { status: 503 });
+    return authJson(bindingDisabledPayload(), { status: 503 });
   }
 
   const store = await cookies();
@@ -26,17 +34,24 @@ export async function POST(request: Request) {
   if (!token) token = await refreshAccessToken();
   if (!token) {
     await clearAuthCookies();
-    return NextResponse.json(
-      { success: false, message: "Authentication required", code: "UNAUTHENTICATED" },
-      { status: 401 }
+    return authJson(
+      {
+        success: false,
+        message: "Authentication required",
+        code: "UNAUTHENTICATED",
+      },
+      { status: 401 },
     );
   }
 
   const startedAt = Date.now();
+  const requestId = request.headers.get("x-request-id");
+  const correlationHeaders = requestId ? { "X-Request-ID": requestId } : undefined;
   try {
     const upstream = await backendJson("auth/verify/", {
       method: "POST",
-      data: { token }
+      headers: correlationHeaders,
+      data: { token },
     });
 
     if (upstream.status === 401) {
@@ -44,37 +59,66 @@ export async function POST(request: Request) {
       if (renewed) {
         const retry = await backendJson("auth/verify/", {
           method: "POST",
-          data: { token: renewed }
+          headers: correlationHeaders,
+          data: { token: renewed },
         });
         if (retry.status < 200 || retry.status >= 300) {
+          logBackendResponseFailure("auth/verify-retry", retry.status, startedAt, requestId);
           await clearAuthCookies();
-          return NextResponse.json(
-            { success: false, message: "Token invalid", code: "authentication_error" },
-            { status: 401 }
+          return authJson(
+            {
+              success: false,
+              message: "Token invalid",
+              code: "authentication_error",
+            },
+            { status: 401 },
           );
         }
-        return NextResponse.json({ success: true, data: { valid: true }, message: "Token verified" });
+        return authJson({
+          success: true,
+          data: { valid: true },
+          message: "Token verified",
+        });
       }
       await clearAuthCookies();
-      return NextResponse.json(
-        { success: false, message: "Token invalid", code: "authentication_error" },
-        { status: 401 }
+      return authJson(
+        {
+          success: false,
+          message: "Token invalid",
+          code: "authentication_error",
+        },
+        { status: 401 },
       );
     }
 
     if (upstream.status < 200 || upstream.status >= 300) {
-      const payload = (upstream.data && typeof upstream.data === "object"
-        ? upstream.data
-        : { success: false, message: "Token verification failed" });
-      return NextResponse.json(payload, { status: upstream.status });
+      logBackendResponseFailure("auth/verify", upstream.status, startedAt, requestId);
+      const payload =
+        upstream.data && typeof upstream.data === "object"
+          ? upstream.data
+          : { success: false, message: "Token verification failed" };
+      return authJson(payload, { status: upstream.status });
     }
 
-    return NextResponse.json({ success: true, data: { valid: true }, message: "Token verified" });
+    return authJson({
+      success: true,
+      data: { valid: true },
+      message: "Token verified",
+    });
   } catch (error) {
-    const { status } = logBackendFailure("auth/verify", error, startedAt);
-    return NextResponse.json(
-      { success: false, message: "Unable to reach authentication service", code: "server_error" },
-      { status }
+    const { status } = logBackendFailure(
+      "auth/verify",
+      error,
+      startedAt,
+      requestId,
+    );
+    return authJson(
+      {
+        success: false,
+        message: "Authentication service is temporarily unavailable",
+        code: "server_error",
+      },
+      { status },
     );
   }
 }

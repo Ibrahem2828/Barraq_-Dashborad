@@ -3,11 +3,18 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { backendJson } from "@/lib/api/backend-http";
 import { isApiBindingEnabled } from "@/lib/api/binding";
-import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
+import {
+  ACCESS_COOKIE,
+  ACCESS_COOKIE_MAX_AGE_SECONDS,
+  CSRF_COOKIE,
+  REFRESH_COOKIE,
+  REFRESH_COOKIE_MAX_AGE_SECONDS,
+} from "@/lib/auth/cookies";
 
 export { getBackendUrl } from "@/lib/api/backend-http";
 
-const cookieSecure = (process.env.AUTH_COOKIE_SECURE ?? "true").toLowerCase() === "true";
+const cookieSecure =
+  (process.env.AUTH_COOKIE_SECURE ?? "true").toLowerCase() === "true";
 const cookieDomain = process.env.AUTH_COOKIE_DOMAIN || undefined;
 
 export function cookieOptions(httpOnly = true) {
@@ -16,16 +23,28 @@ export function cookieOptions(httpOnly = true) {
     secure: cookieSecure,
     sameSite: "lax" as const,
     path: "/",
-    domain: cookieDomain
+    domain: cookieDomain,
   };
 }
 
-export async function setAuthCookies(access: string, refresh: string): Promise<string> {
+export async function setAuthCookies(
+  access: string,
+  refresh: string,
+): Promise<string> {
   const store = await cookies();
   const csrf = crypto.randomUUID();
-  store.set(ACCESS_COOKIE, access, { ...cookieOptions(true), maxAge: 60 * 15 });
-  store.set(REFRESH_COOKIE, refresh, { ...cookieOptions(true), maxAge: 60 * 60 * 24 * 30 });
-  store.set(CSRF_COOKIE, csrf, { ...cookieOptions(false), maxAge: 60 * 60 * 24 * 30 });
+  store.set(ACCESS_COOKIE, access, {
+    ...cookieOptions(true),
+    maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
+  });
+  store.set(REFRESH_COOKIE, refresh, {
+    ...cookieOptions(true),
+    maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+  });
+  store.set(CSRF_COOKIE, csrf, {
+    ...cookieOptions(false),
+    maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+  });
   return csrf;
 }
 
@@ -48,16 +67,33 @@ export async function refreshAccessToken(): Promise<string | null> {
 
   const response = await backendJson<Record<string, unknown>>("auth/refresh/", {
     method: "POST",
-    data: { refresh }
+    data: { refresh },
   });
   if (response.status < 200 || response.status >= 300) return null;
-  const payload = (response.data && typeof response.data === "object" ? response.data : {}) as Record<string, unknown>;
-  const data = (payload.data && typeof payload.data === "object" ? payload.data : payload) as Record<string, unknown>;
-  const access = typeof data.access === "string" ? data.access : typeof data.access_token === "string" ? data.access_token : null;
+  const payload = (
+    response.data && typeof response.data === "object" ? response.data : {}
+  ) as Record<string, unknown>;
+  const data = (
+    payload.data && typeof payload.data === "object" ? payload.data : payload
+  ) as Record<string, unknown>;
+  const access =
+    typeof data.access === "string"
+      ? data.access
+      : typeof data.access_token === "string"
+        ? data.access_token
+        : null;
   const nextRefresh = typeof data.refresh === "string" ? data.refresh : refresh;
   if (!access) return null;
-  store.set(ACCESS_COOKIE, access, { ...cookieOptions(true), maxAge: 60 * 15 });
-  if (nextRefresh !== refresh) store.set(REFRESH_COOKIE, nextRefresh, { ...cookieOptions(true), maxAge: 60 * 60 * 24 * 30 });
+  store.set(ACCESS_COOKIE, access, {
+    ...cookieOptions(true),
+    maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
+  });
+  if (nextRefresh !== refresh) {
+    store.set(REFRESH_COOKIE, nextRefresh, {
+      ...cookieOptions(true),
+      maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
   return access;
 }
 

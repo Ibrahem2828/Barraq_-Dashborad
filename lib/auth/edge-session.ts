@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiBindingEnabled } from "@/lib/api/binding";
-import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
+import {
+  ACCESS_COOKIE,
+  ACCESS_COOKIE_MAX_AGE_SECONDS,
+  CSRF_COOKIE,
+  REFRESH_COOKIE,
+  REFRESH_COOKIE_MAX_AGE_SECONDS,
+} from "@/lib/auth/cookies";
 
 function backendBase(): string {
-  return (process.env.BACKEND_API_URL ?? "https://api.barraq.xn--mgbaab0cxheq.tech/api/v1").replace(/\/$/, "");
+  return (
+    process.env.BACKEND_API_URL ??
+    "https://api.baraqapp.com/api/v1"
+  ).replace(/\/+$/, "");
+}
+
+function backendTimeoutMs(): number {
+  const configured = Number(process.env.BACKEND_API_TIMEOUT_MS ?? 15_000);
+  return Number.isFinite(configured) && configured > 0 ? configured : 15_000;
 }
 
 function cookieSecure(): boolean {
@@ -20,53 +34,60 @@ function authCookieOptions(httpOnly: boolean) {
     secure: cookieSecure(),
     sameSite: "lax" as const,
     path: "/",
-    domain: cookieDomain()
+    domain: cookieDomain(),
   };
 }
 
 export function clearAuthCookiesOn(response: NextResponse): void {
   for (const name of [ACCESS_COOKIE, REFRESH_COOKIE, CSRF_COOKIE]) {
-    response.cookies.set(name, "", { ...authCookieOptions(name !== CSRF_COOKIE), maxAge: 0 });
+    response.cookies.set(name, "", {
+      ...authCookieOptions(name !== CSRF_COOKIE),
+      maxAge: 0,
+    });
   }
 }
 
-function setAuthCookiesOn(response: NextResponse, access: string, refresh: string): void {
-  response.cookies.set(ACCESS_COOKIE, access, { ...authCookieOptions(true), maxAge: 60 * 15 });
-  response.cookies.set(REFRESH_COOKIE, refresh, { ...authCookieOptions(true), maxAge: 60 * 60 * 24 * 30 });
-  response.cookies.set(CSRF_COOKIE, crypto.randomUUID(), { ...authCookieOptions(false), maxAge: 60 * 60 * 24 * 30 });
-}
-
-function readJwtExp(token: string): number | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-    const payload = JSON.parse(atob(padded)) as { exp?: unknown };
-    return typeof payload.exp === "number" ? payload.exp : null;
-  } catch {
-    return null;
-  }
-}
-
-function isJwtUnexpired(token: string, skewSeconds = 30): boolean {
-  const exp = readJwtExp(token);
-  if (exp === null) return false;
-  return exp > Math.floor(Date.now() / 1000) + skewSeconds;
+function setAuthCookiesOn(
+  response: NextResponse,
+  access: string,
+  refresh: string,
+): void {
+  response.cookies.set(ACCESS_COOKIE, access, {
+    ...authCookieOptions(true),
+    maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
+  });
+  response.cookies.set(REFRESH_COOKIE, refresh, {
+    ...authCookieOptions(true),
+    maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+  });
+  response.cookies.set(CSRF_COOKIE, crypto.randomUUID(), {
+    ...authCookieOptions(false),
+    maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+  });
 }
 
 type VerifyResult = "valid" | "invalid" | "unreachable";
 
-async function verifyAccessToken(token: string): Promise<VerifyResult> {
+async function verifyAdminAccess(
+  token: string,
+  requestId: string | null,
+): Promise<VerifyResult> {
   try {
-    const response = await fetch(`${backendBase()}/auth/verify/`, {
-      method: "POST",
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
       // See lib/api/backend-http.ts: this bypasses the Caddy gateway, so
       // Django's SECURE_SSL_REDIRECT needs this header set explicitly or it
       // 301s this internal plain-HTTP call to a dead HTTPS port.
-      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Forwarded-Proto": "https" },
-      body: JSON.stringify({ token }),
-      cache: "no-store"
+      "X-Forwarded-Proto": "https",
+    };
+    if (requestId) headers["X-Request-ID"] = requestId;
+    const response = await fetch(`${backendBase()}/admin/me/`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(backendTimeoutMs()),
     });
     if (response.ok) return "valid";
     if (response.status === 401 || response.status === 403) return "invalid";
@@ -76,33 +97,51 @@ async function verifyAccessToken(token: string): Promise<VerifyResult> {
   }
 }
 
-async function refreshTokens(refresh: string): Promise<{ access: string; refresh: string } | null> {
+async function refreshTokens(
+  refresh: string,
+  requestId: string | null,
+): Promise<{ access: string; refresh: string } | null> {
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-Forwarded-Proto": "https",
+    };
+    if (requestId) headers["X-Request-ID"] = requestId;
     const response = await fetch(`${backendBase()}/auth/refresh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Forwarded-Proto": "https" },
+      headers,
       body: JSON.stringify({ refresh }),
-      cache: "no-store"
+      cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(backendTimeoutMs()),
     });
     if (!response.ok) return null;
-    const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    const payload = (await response.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
     if (!payload || typeof payload !== "object") return null;
-    const data = (payload.data && typeof payload.data === "object" ? payload.data : payload) as Record<string, unknown>;
+    const data = (
+      payload.data && typeof payload.data === "object" ? payload.data : payload
+    ) as Record<string, unknown>;
     const access =
-      typeof data.access === "string" ? data.access : typeof data.access_token === "string" ? data.access_token : null;
+      typeof data.access === "string"
+        ? data.access
+        : typeof data.access_token === "string"
+          ? data.access_token
+          : null;
     const nextRefresh =
-      typeof data.refresh === "string" ? data.refresh : typeof data.refresh_token === "string" ? data.refresh_token : refresh;
+      typeof data.refresh === "string"
+        ? data.refresh
+        : typeof data.refresh_token === "string"
+          ? data.refresh_token
+          : refresh;
     if (!access) return null;
     return { access, refresh: nextRefresh };
   } catch {
     return null;
   }
-}
-
-function acceptToken(result: VerifyResult, token: string): boolean {
-  if (result === "valid") return true;
-  // Backend blip: allow only structurally valid, unexpired JWTs.
-  return result === "unreachable" && isJwtUnexpired(token);
 }
 
 export type EdgeSessionResult =
@@ -113,37 +152,40 @@ export type EdgeSessionResult =
  * Edge-safe session gate for middleware: verifies access with the backend,
  * refreshes when needed, and rejects forged/empty cookie values.
  */
-export async function resolveEdgeSession(request: NextRequest): Promise<EdgeSessionResult> {
+export async function resolveEdgeSession(
+  request: NextRequest,
+): Promise<EdgeSessionResult> {
   if (!isApiBindingEnabled()) {
     return { authenticated: false };
   }
 
   const access = request.cookies.get(ACCESS_COOKIE)?.value ?? null;
   const refresh = request.cookies.get(REFRESH_COOKIE)?.value ?? null;
+  const requestId = request.headers.get("x-request-id");
   if (!access && !refresh) {
     return { authenticated: false };
   }
 
   if (access) {
-    const verified = await verifyAccessToken(access);
-    if (acceptToken(verified, access)) {
+    const verified = await verifyAdminAccess(access, requestId);
+    if (verified === "valid") {
       return { authenticated: true };
     }
     if (verified === "unreachable") {
-      // Unreachable and token not a valid unexpired JWT → fall through to refresh.
+      // Fail closed, but allow one bounded refresh attempt before rejecting.
     }
   }
 
   if (refresh) {
-    const renewed = await refreshTokens(refresh);
+    const renewed = await refreshTokens(refresh, requestId);
     if (renewed) {
-      const verified = await verifyAccessToken(renewed.access);
-      if (acceptToken(verified, renewed.access)) {
+      const verified = await verifyAdminAccess(renewed.access, requestId);
+      if (verified === "valid") {
         return {
           authenticated: true,
           attach(response) {
             setAuthCookiesOn(response, renewed.access, renewed.refresh);
-          }
+          },
         };
       }
     }

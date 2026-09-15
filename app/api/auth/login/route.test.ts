@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
-const ENV_KEYS = ["NODE_ENV", "NEXT_PUBLIC_API_BINDING_ENABLED", "API_BINDING_ENABLED"] as const;
-type EnvSnapshot = Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>;
+const ENV_KEYS = [
+  "NODE_ENV",
+  "NEXT_PUBLIC_API_BINDING_ENABLED",
+  "API_BINDING_ENABLED",
+] as const;
+type EnvSnapshot = Partial<
+  Record<(typeof ENV_KEYS)[number], string | undefined>
+>;
 
 // NODE_ENV is typed read-only by @types/node; vi.stubEnv/unstubAllEnvs is
 // the sanctioned way to override it (and any other env var) per-test.
@@ -15,8 +21,14 @@ function setEnv(values: EnvSnapshot) {
 function loginRequest() {
   return new Request("http://localhost/api/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "someone@example.com", password: "whatever" })
+    headers: {
+      "Content-Type": "application/json",
+      "X-Request-ID": "test-request-id",
+    },
+    body: JSON.stringify({
+      email: "someone@example.com",
+      password: "whatever",
+    }),
   });
 }
 
@@ -27,7 +39,10 @@ describe("POST /api/auth/login — offline-bypass safety", () => {
   });
 
   it("refuses to mint an unauthenticated session in production, even with binding explicitly disabled", async () => {
-    setEnv({ NODE_ENV: "production", NEXT_PUBLIC_API_BINDING_ENABLED: "false" });
+    setEnv({
+      NODE_ENV: "production",
+      NEXT_PUBLIC_API_BINDING_ENABLED: "false",
+    });
     const response = await POST(loginRequest());
     const body = (await response.json()) as { success: boolean };
 
@@ -42,7 +57,10 @@ describe("POST /api/auth/login — offline-bypass safety", () => {
     // production, so this attempts a real backend call. Stub fetch to fail
     // fast instead of actually hitting the network — the point of this test
     // is only that the outcome is never a 200 with offline auth cookies.
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network unreachable")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network unreachable")),
+    );
 
     const response = await POST(loginRequest());
     const body = (await response.json()) as { success: boolean };
@@ -62,13 +80,120 @@ describe("POST /api/auth/login — offline-bypass safety", () => {
   });
 
   it("still allows the offline bypass outside production, for local dev without a backend", async () => {
-    setEnv({ NODE_ENV: "development", NEXT_PUBLIC_API_BINDING_ENABLED: "false" });
+    setEnv({
+      NODE_ENV: "development",
+      NEXT_PUBLIC_API_BINDING_ENABLED: "false",
+    });
     const response = await POST(loginRequest());
-    const body = (await response.json()) as { success: boolean; data: { offline: boolean } };
+    const body = (await response.json()) as {
+      success: boolean;
+      data: { offline: boolean };
+    };
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.offline).toBe(true);
     expect(response.headers.get("set-cookie")).toBeTruthy();
+  });
+});
+
+describe("POST /api/auth/login — backend integration contract", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("creates secure HttpOnly cookies only after Django confirms admin access", async () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { access: "access-token", refresh: "refresh-token" },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { id: 1, role: "admin" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(loginRequest());
+    const cookies = response.headers.getSetCookie().join("\n");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(cookies).toContain("baraq_access=access-token");
+    expect(cookies).toContain("baraq_refresh=refresh-token");
+    expect(cookies).toContain("HttpOnly");
+    expect(cookies).toContain("Secure");
+    expect(cookies).toContain("SameSite=lax");
+    expect(cookies).toContain("Path=/");
+    expect(cookies).toContain("Max-Age=1800");
+    expect(cookies).toContain("Max-Age=1209600");
+
+    const firstRequest = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(firstRequest.url).toBe(
+      "https://api.baraqapp.com/api/v1/auth/login/",
+    );
+    expect(firstRequest.redirect).toBe("manual");
+    expect(firstRequest.headers.get("x-forwarded-proto")).toBe("https");
+    expect(firstRequest.headers.get("x-request-id")).toBe("test-request-id");
+  });
+
+  it("rejects a non-admin account without writing cookies", async () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            data: { access: "student-access", refresh: "student-refresh" },
+          }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({ detail: "Forbidden" }, { status: 403 }),
+        ),
+    );
+
+    const response = await POST(loginRequest());
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("returns a gateway error instead of relaying an upstream redirect", async () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(null, { status: 301, headers: { location: "/login/" } }),
+        ),
+    );
+
+    const response = await POST(loginRequest());
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("never writes the submitted password or tokens to failure logs", async () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network unreachable")),
+    );
+
+    await POST(loginRequest());
+    const output = JSON.stringify(log.mock.calls);
+
+    expect(output).not.toContain("whatever");
+    expect(output).not.toContain("access-token");
+    expect(output).not.toContain("refresh-token");
+    expect(output).toContain("test-request-id");
   });
 });
