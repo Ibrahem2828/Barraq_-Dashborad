@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { backendJson } from "@/lib/api/backend-http";
+import { backendJson, logBackendFailure } from "@/lib/api/backend-http";
 import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
 import { cookieOptions } from "@/lib/auth/server";
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     return NextResponse.json(bindingDisabledPayload(), { status: 503 });
   }
 
+  const startedAt = Date.now();
   try {
     const upstream = await backendJson<Record<string, unknown>>("auth/login/", {
       method: "POST",
@@ -70,7 +71,8 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json({ success: true, data: { authenticated: true }, message: "Signed in" });
     return withAuthCookies(response, access, refresh);
-  } catch {
-    return NextResponse.json({ success: false, message: "Unable to reach authentication service" }, { status: 503 });
+  } catch (error) {
+    const { status } = logBackendFailure("auth/login", error, startedAt);
+    return NextResponse.json({ success: false, message: "Unable to reach authentication service" }, { status });
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { backendJson } from "@/lib/api/backend-http";
+import { backendJson, logBackendFailure } from "@/lib/api/backend-http";
 import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 
 export async function POST(request: Request) {
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json(bindingDisabledPayload(), { status: 503 });
   }
 
+  const startedAt = Date.now();
   try {
     const upstream = await backendJson("auth/password-reset/confirm/", {
       method: "POST",
@@ -41,10 +42,11 @@ export async function POST(request: Request) {
       ? upstream.data
       : { success: false, message: "Password reset confirmation failed" });
     return NextResponse.json(payload, { status: upstream.status });
-  } catch {
+  } catch (error) {
+    const { status } = logBackendFailure("auth/password-reset/confirm", error, startedAt);
     return NextResponse.json(
       { success: false, message: "Unable to reach authentication service", code: "server_error" },
-      { status: 503 }
+      { status }
     );
   }
 }

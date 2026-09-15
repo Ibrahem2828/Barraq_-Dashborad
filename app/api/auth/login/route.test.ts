@@ -47,7 +47,14 @@ describe("POST /api/auth/login — offline-bypass safety", () => {
     const response = await POST(loginRequest());
     const body = (await response.json()) as { success: boolean };
 
-    expect(response.status).toBe(503);
+    // The exact status now depends on the classified failure kind (502 for a
+    // generic network error, 504 for a timeout, 503 as the unclassified
+    // fallback — see lib/api/backend-http.ts::classifyBackendError) rather
+    // than a single hardcoded 503 for every transport failure. What this
+    // test actually guards is the security invariant: never a 2xx, and
+    // never an offline-bypass session cookie.
+    expect(response.status).toBeGreaterThanOrEqual(500);
+    expect(response.status).toBeLessThan(600);
     expect(body.success).toBe(false);
     expect(response.headers.get("set-cookie")).toBeNull();
 

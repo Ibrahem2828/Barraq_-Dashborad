@@ -61,7 +61,10 @@ async function verifyAccessToken(token: string): Promise<VerifyResult> {
   try {
     const response = await fetch(`${backendBase()}/auth/verify/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      // See lib/api/backend-http.ts: this bypasses the Caddy gateway, so
+      // Django's SECURE_SSL_REDIRECT needs this header set explicitly or it
+      // 301s this internal plain-HTTP call to a dead HTTPS port.
+      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Forwarded-Proto": "https" },
       body: JSON.stringify({ token }),
       cache: "no-store"
     });
@@ -77,7 +80,7 @@ async function refreshTokens(refresh: string): Promise<{ access: string; refresh
   try {
     const response = await fetch(`${backendBase()}/auth/refresh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Forwarded-Proto": "https" },
       body: JSON.stringify({ refresh }),
       cache: "no-store"
     });

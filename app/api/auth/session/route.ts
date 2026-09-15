@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { backendJson } from "@/lib/api/backend-http";
+import { backendJson, logBackendFailure } from "@/lib/api/backend-http";
 import { isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookies";
 import { clearAuthCookies, refreshAccessToken } from "@/lib/auth/server";
@@ -29,6 +29,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: { authenticated: false, verified: false } });
   }
 
+  const startedAt = Date.now();
   try {
     const upstream = await backendJson("auth/verify/", {
       method: "POST",
@@ -51,7 +52,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ success: true, data: { authenticated: true, verified: true } });
-  } catch {
+  } catch (error) {
+    logBackendFailure("auth/session", error, startedAt);
     return NextResponse.json({
       success: true,
       data: { authenticated: Boolean(access), verified: false, unreachable: true }

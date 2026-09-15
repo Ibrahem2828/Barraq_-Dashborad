@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { backendJson } from "@/lib/api/backend-http";
+import { backendJson, logBackendFailure } from "@/lib/api/backend-http";
 import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import { clearAuthCookies, refreshAccessToken } from "@/lib/auth/server";
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     );
   }
 
+  const startedAt = Date.now();
   try {
     const upstream = await backendJson("auth/verify/", {
       method: "POST",
@@ -69,10 +70,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, data: { valid: true }, message: "Token verified" });
-  } catch {
+  } catch (error) {
+    const { status } = logBackendFailure("auth/verify", error, startedAt);
     return NextResponse.json(
       { success: false, message: "Unable to reach authentication service", code: "server_error" },
-      { status: 503 }
+      { status }
     );
   }
 }
