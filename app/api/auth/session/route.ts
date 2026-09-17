@@ -9,6 +9,8 @@ export async function GET(request: Request) {
   const store = await cookies();
   let access = store.get(ACCESS_COOKIE)?.value ?? null;
   const hasRefresh = Boolean(store.get(REFRESH_COOKIE)?.value);
+  const startedAt = Date.now();
+  const requestId = request.headers.get("x-request-id");
 
   if (!access && !hasRefresh) {
     return authJson({
@@ -26,19 +28,21 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!access) access = await refreshAccessToken();
-  if (!access) {
-    await clearAuthCookies();
-    return authJson({
-      success: true,
-      data: { authenticated: false, verified: false },
-    });
-  }
-
-  const startedAt = Date.now();
-  const requestId = request.headers.get("x-request-id");
-  const correlationHeaders = requestId ? { "X-Request-ID": requestId } : {};
   try {
+    // Refresh is an upstream network call too. Keep it inside the same
+    // classified error boundary as the admin verification so a DNS/timeout/
+    // TLS failure cannot escape as an unhandled 500 when only a refresh
+    // cookie remains.
+    if (!access) access = await refreshAccessToken();
+    if (!access) {
+      await clearAuthCookies();
+      return authJson({
+        success: true,
+        data: { authenticated: false, verified: false },
+      });
+    }
+
+    const correlationHeaders = requestId ? { "X-Request-ID": requestId } : {};
     let upstream = await backendJson("admin/me/", {
       headers: { Authorization: `Bearer ${access}`, ...correlationHeaders },
     });
@@ -79,7 +83,7 @@ export async function GET(request: Request) {
       data: { authenticated: true, verified: true },
     });
   } catch (error) {
-    const { status } = logBackendFailure(
+    const { status, code } = logBackendFailure(
       "auth/session",
       error,
       startedAt,
@@ -89,7 +93,7 @@ export async function GET(request: Request) {
       {
         success: false,
         message: "Authentication service is temporarily unavailable",
-        code: "server_error",
+        code,
       },
       { status },
     );

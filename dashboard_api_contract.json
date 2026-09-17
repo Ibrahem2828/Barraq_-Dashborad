@@ -13,8 +13,8 @@
     "api_base_url_env": "PUBLIC_API_BASE_URL",
     "audience": "dashboard",
     "compatible_backend_contract_version": "2.0",
-    "generated_at": "2026-08-22T18:57:26+00:00",
-    "generated_from_backend_commit": "35713a15a4ddae5005eef49c574d20b9b34a829a",
+    "generated_at": "2026-09-16T06:00:05+00:00",
+    "generated_from_backend_commit": "cad377d041aee8e50d9b8d1554869426455314ec",
     "name": "Baraq Dashboard API Contract",
     "notes": [
       "Generated deterministically from the current Django URLConf, DRF Spectacular schema and source-reviewed dynamic view behavior.",
@@ -2538,6 +2538,117 @@
           "description": "",
           "schema": {
             "$ref": "#/resources/Transcription/schema"
+          }
+        }
+      },
+      "side_effects": [],
+      "throttling": {
+        "configured_default_rates": {
+          "ai_requests": "100/day",
+          "anon": "60/hour",
+          "login": "10/minute",
+          "password_reset": "5/hour",
+          "register": "10/hour",
+          "uploads": "30/hour",
+          "user": "2000/day"
+        },
+        "global_scopes": [
+          "anon",
+          "user",
+          "scoped"
+        ],
+        "known": true,
+        "note": "Rates are environment-configurable Django settings; the values above are source defaults.",
+        "scope": null
+      }
+    },
+    {
+      "audience": "dashboard",
+      "authentication": {
+        "mechanism": "Authorization: Bearer <access_token>",
+        "permissions": [
+          "IsAdminDashboardUser",
+          "HasAdminPermission",
+          "analytics.view"
+        ],
+        "required": true,
+        "roles": [
+          "admin",
+          "support",
+          "super_admin"
+        ],
+        "type": "Bearer JWT"
+      },
+      "backend_source": {
+        "action": null,
+        "permission": [
+          "apps.admin_dashboard.permissions.IsAdminDashboardUser",
+          "apps.admin_dashboard.permissions.HasAdminPermission"
+        ],
+        "serializer": null,
+        "url_file": "config/urls.py; config/api_urls.py; apps/admin_dashboard/urls.py",
+        "view": "apps.admin_dashboard.views.AdminAIUsageView"
+      },
+      "content_type": null,
+      "content_types": [],
+      "description": "AI token/cost consumption, denormalized onto AIJob from the AI\nservice's completion webhook (metadata.usage/.provider) -- see\napps/ai_integration/services.py:complete_job. Numbers reflect what\nDjango has received, not a live query against the AI service's own\ndatabase.",
+      "domain": "admin_dashboard",
+      "headers": [
+        {
+          "description": "Access token from the shared JWT authentication API.",
+          "name": "Authorization",
+          "required": true,
+          "schema": {
+            "format": "Bearer JWT",
+            "type": "string"
+          }
+        },
+        {
+          "description": "Optional correlation ID; an invalid or omitted value is replaced by the server.",
+          "name": "X-Request-ID",
+          "required": false,
+          "schema": {
+            "pattern": "^[A-Za-z0-9._-]{8,128}$",
+            "type": "string"
+          }
+        }
+      ],
+      "id": "v1_admin_ai_usage_retrieve",
+      "idempotency": {
+        "key": null,
+        "supported": false
+      },
+      "method": "GET",
+      "name": "v1_admin_ai_usage_retrieve",
+      "notes": [],
+      "ownership": {
+        "required": false,
+        "rule": "No per-resource ownership check; access is governed by dashboard RBAC."
+      },
+      "pagination": null,
+      "path": "/api/v1/admin/ai-usage/",
+      "path_parameters": [],
+      "query_parameters": [],
+      "related_endpoints": [],
+      "request": {
+        "example": null,
+        "required": false,
+        "schema": null
+      },
+      "response_envelope": {
+        "applied": true,
+        "data_schema_location": "data for successful JSON responses; explicit payloads with success are preserved",
+        "note": "The response schemas in this contract describe the inner data value before EnvelopeJSONRenderer wraps it.",
+        "request_id_field": "request_id when a request exists"
+      },
+      "responses": {
+        "200": {
+          "content_types": [
+            "application/json"
+          ],
+          "description": "",
+          "schema": {
+            "$ref": "#/resources/AdminAIUsage/schema"
           }
         }
       },
@@ -12082,7 +12193,7 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
           "maximum": 5,
           "min_length": null,
@@ -12237,6 +12348,54 @@
           "default": null,
           "description": null,
           "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "provider_snapshot",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "model_snapshot",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "prompt_version_snapshot",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
           "format": "date-time",
           "max_length": null,
           "maximum": null,
@@ -12300,7 +12459,20 @@
             "readOnly": true,
             "type": "integer"
           },
+          "model_snapshot": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "prompt_version_snapshot": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "provider_snapshot": {
+            "readOnly": true,
+            "type": "string"
+          },
           "rating": {
+            "format": "int64",
             "maximum": 5,
             "minimum": 1,
             "type": "integer"
@@ -12320,6 +12492,9 @@
           "forwarded_to_ai_service",
           "id",
           "job",
+          "model_snapshot",
+          "prompt_version_snapshot",
+          "provider_snapshot",
           "rating",
           "updated_at"
         ],
@@ -12444,16 +12619,16 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "uuid",
           "max_length": null,
           "maximum": null,
           "min_length": null,
           "minimum": null,
           "name": "project",
-          "nullable": true,
+          "nullable": false,
           "read_only": true,
           "required": true,
-          "type": "integer",
+          "type": "string",
           "write_only": false
         },
         {
@@ -12700,6 +12875,102 @@
           "default": null,
           "description": null,
           "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "provider_account",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "model_name",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "prompt_version",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "input_tokens",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "output_tokens",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "decimal",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "cost_usd",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
           "format": "date-time",
           "max_length": null,
           "maximum": null,
@@ -12786,6 +13057,12 @@
             "readOnly": true,
             "type": "string"
           },
+          "cost_usd": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,4}(?:\\.\\d{0,6})?$",
+            "readOnly": true,
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "readOnly": true,
@@ -12814,17 +13091,37 @@
           "input_payload": {
             "readOnly": true
           },
+          "input_tokens": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "model_name": {
+            "readOnly": true,
+            "type": "string"
+          },
           "output_schema_version": {
             "readOnly": true,
             "type": "string"
+          },
+          "output_tokens": {
+            "readOnly": true,
+            "type": "integer"
           },
           "parameters": {
             "readOnly": true
           },
           "project": {
-            "nullable": true,
+            "format": "uuid",
             "readOnly": true,
-            "type": "integer"
+            "type": "string"
+          },
+          "prompt_version": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "provider_account": {
+            "readOnly": true,
+            "type": "string"
           },
           "public_id": {
             "format": "uuid",
@@ -12895,6 +13192,7 @@
           "collection",
           "completed_at",
           "contract_version",
+          "cost_usd",
           "created_at",
           "credits_committed",
           "credits_reserved",
@@ -12902,9 +13200,14 @@
           "error_message",
           "external_job_id",
           "input_payload",
+          "input_tokens",
+          "model_name",
           "output_schema_version",
+          "output_tokens",
           "parameters",
           "project",
+          "prompt_version",
+          "provider_account",
           "public_id",
           "quality_metrics",
           "request_id",
@@ -12953,6 +13256,399 @@
           "canceled"
         ],
         "type": "string"
+      }
+    },
+    "AIUsageByCharacter": {
+      "fields": [
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "character",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "job_count",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "decimal",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "cost_usd",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "total_tokens",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        }
+      ],
+      "schema": {
+        "properties": {
+          "character": {
+            "type": "string"
+          },
+          "cost_usd": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,6}(?:\\.\\d{0,6})?$",
+            "type": "string"
+          },
+          "job_count": {
+            "type": "integer"
+          },
+          "total_tokens": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "character",
+          "cost_usd",
+          "job_count",
+          "total_tokens"
+        ],
+        "type": "object"
+      }
+    },
+    "AIUsageDailyPoint": {
+      "fields": [
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "date",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "date",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "job_count",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "decimal",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "cost_usd",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "total_tokens",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        }
+      ],
+      "schema": {
+        "properties": {
+          "cost_usd": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,6}(?:\\.\\d{0,6})?$",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "job_count": {
+            "type": "integer"
+          },
+          "total_tokens": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cost_usd",
+          "date",
+          "job_count",
+          "total_tokens"
+        ],
+        "type": "object"
+      }
+    },
+    "AIUsageMonthToDate": {
+      "fields": [
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "year_month",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "job_count",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "decimal",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "cost_usd",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        }
+      ],
+      "schema": {
+        "properties": {
+          "cost_usd": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,6}(?:\\.\\d{0,6})?$",
+            "type": "string"
+          },
+          "job_count": {
+            "type": "integer"
+          },
+          "year_month": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost_usd",
+          "job_count",
+          "year_month"
+        ],
+        "type": "object"
+      }
+    },
+    "AIUsageTotals": {
+      "fields": [
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "job_count",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "completed_count",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "input_tokens",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "output_tokens",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "total_tokens",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": "decimal",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "cost_usd",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        }
+      ],
+      "schema": {
+        "properties": {
+          "completed_count": {
+            "type": "integer"
+          },
+          "cost_usd": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,6}(?:\\.\\d{0,6})?$",
+            "type": "string"
+          },
+          "input_tokens": {
+            "type": "integer"
+          },
+          "job_count": {
+            "type": "integer"
+          },
+          "output_tokens": {
+            "type": "integer"
+          },
+          "total_tokens": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "completed_count",
+          "cost_usd",
+          "input_tokens",
+          "job_count",
+          "output_tokens",
+          "total_tokens"
+        ],
+        "type": "object"
       }
     },
     "AIWebhookEvent": {
@@ -13173,6 +13869,125 @@
         "type": "string"
       }
     },
+    "AdminAIUsage": {
+      "fields": [
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "range_days",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "integer",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "totals",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "schema_ref": "#/resources/AIUsageTotals/schema",
+          "type": "object",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "month_to_date",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "schema_ref": "#/resources/AIUsageMonthToDate/schema",
+          "type": "object",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "daily",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "array",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
+          "format": null,
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "by_character",
+          "nullable": false,
+          "read_only": false,
+          "required": true,
+          "type": "array",
+          "write_only": false
+        }
+      ],
+      "schema": {
+        "properties": {
+          "by_character": {
+            "items": {
+              "$ref": "#/resources/AIUsageByCharacter/schema"
+            },
+            "type": "array"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/resources/AIUsageDailyPoint/schema"
+            },
+            "type": "array"
+          },
+          "month_to_date": {
+            "$ref": "#/resources/AIUsageMonthToDate/schema"
+          },
+          "range_days": {
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/resources/AIUsageTotals/schema"
+          }
+        },
+        "required": [
+          "by_character",
+          "daily",
+          "month_to_date",
+          "range_days",
+          "totals"
+        ],
+        "type": "object"
+      }
+    },
     "AdminCharacterInteraction": {
       "fields": [
         {
@@ -13360,9 +14175,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "result_id",
@@ -13467,7 +14282,8 @@
           },
           "metadata": {},
           "result_id": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "nullable": true,
             "type": "integer"
@@ -14709,9 +15525,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "questions_count",
@@ -14725,9 +15541,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "time_limit_minutes",
@@ -14811,7 +15627,8 @@
             "type": "integer"
           },
           "questions_count": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -14829,7 +15646,8 @@
             "type": "string"
           },
           "time_limit_minutes": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "nullable": true,
             "type": "integer"
@@ -15039,9 +15857,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "correct_answers_count",
@@ -15055,9 +15873,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "wrong_answers_count",
@@ -15071,9 +15889,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "unanswered_count",
@@ -15087,9 +15905,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "duration_seconds",
@@ -15135,7 +15953,8 @@
       "schema": {
         "properties": {
           "correct_answers_count": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -15145,7 +15964,8 @@
             "type": "string"
           },
           "duration_seconds": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "nullable": true,
             "type": "integer"
@@ -15189,7 +16009,8 @@
             "type": "string"
           },
           "unanswered_count": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -15207,7 +16028,8 @@
             "readOnly": true
           },
           "wrong_answers_count": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           }
@@ -16369,9 +17191,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "daily_study_minutes",
@@ -16538,7 +17360,8 @@
             "type": "string"
           },
           "daily_study_minutes": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -16671,9 +17494,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "estimated_minutes",
@@ -16730,9 +17553,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "order",
@@ -16746,7 +17569,8 @@
       "schema": {
         "properties": {
           "estimated_minutes": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -16755,7 +17579,8 @@
             "type": "integer"
           },
           "order": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -18631,9 +19456,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 32767,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "order",
@@ -18714,7 +19539,8 @@
             "type": "string"
           },
           "order": {
-            "maximum": 32767,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -18771,9 +19597,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 32767,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "order",
@@ -18814,7 +19640,8 @@
             "type": "string"
           },
           "order": {
-            "maximum": 32767,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           }
@@ -22207,9 +23034,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 32767,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "order",
@@ -22250,7 +23077,8 @@
             "type": "string"
           },
           "order": {
-            "maximum": 32767,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           }
@@ -22608,9 +23436,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "sort_order",
@@ -22658,7 +23486,8 @@
             "type": "string"
           },
           "sort_order": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           }
@@ -23110,6 +23939,22 @@
           "default": null,
           "description": null,
           "enum": null,
+          "format": "uuid",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "project",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
           "format": null,
           "max_length": null,
           "maximum": null,
@@ -23324,6 +24169,11 @@
             "readOnly": true,
             "type": "string"
           },
+          "project": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
           "recommendations": {
             "readOnly": true
           },
@@ -23361,6 +24211,7 @@
           "is_read",
           "next_best_action",
           "overall_score",
+          "project",
           "recommendations",
           "source_metrics",
           "strengths",
@@ -23983,9 +24834,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "sort_order",
@@ -24071,7 +24922,8 @@
             "type": "string"
           },
           "sort_order": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           },
@@ -24264,9 +25116,9 @@
           "default": null,
           "description": null,
           "enum": null,
-          "format": null,
+          "format": "int64",
           "max_length": null,
-          "maximum": 2147483647,
+          "maximum": 9223372036854775807,
           "min_length": null,
           "minimum": 0,
           "name": "sort_order",
@@ -24314,7 +25166,8 @@
             "type": "string"
           },
           "sort_order": {
-            "maximum": 2147483647,
+            "format": "int64",
+            "maximum": 9223372036854775807,
             "minimum": 0,
             "type": "integer"
           }
@@ -24677,6 +25530,22 @@
           "default": null,
           "description": null,
           "enum": null,
+          "format": "uuid",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "project",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
           "format": null,
           "max_length": null,
           "maximum": null,
@@ -24911,6 +25780,11 @@
           "key_points": {
             "readOnly": true
           },
+          "project": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
           "quality_score": {
             "format": "decimal",
             "nullable": true,
@@ -24951,6 +25825,7 @@
           "id",
           "important_terms",
           "key_points",
+          "project",
           "quality_score",
           "review_questions",
           "short_summary",
@@ -25428,6 +26303,22 @@
           "default": null,
           "description": null,
           "enum": null,
+          "format": "uuid",
+          "max_length": null,
+          "maximum": null,
+          "min_length": null,
+          "minimum": null,
+          "name": "project",
+          "nullable": false,
+          "read_only": true,
+          "required": true,
+          "type": "string",
+          "write_only": false
+        },
+        {
+          "default": null,
+          "description": null,
+          "enum": null,
           "format": null,
           "max_length": null,
           "maximum": null,
@@ -25638,6 +26529,11 @@
             "readOnly": true,
             "type": "string"
           },
+          "project": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
           "segments": {
             "readOnly": true
           },
@@ -25665,6 +26561,7 @@
           "full_transcript",
           "id",
           "language",
+          "project",
           "segments",
           "source",
           "title",

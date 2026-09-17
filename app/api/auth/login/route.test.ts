@@ -137,6 +137,10 @@ describe("POST /api/auth/login — backend integration contract", () => {
     expect(firstRequest.redirect).toBe("manual");
     expect(firstRequest.headers.get("x-forwarded-proto")).toBe("https");
     expect(firstRequest.headers.get("x-request-id")).toBe("test-request-id");
+    await expect(firstRequest.clone().json()).resolves.toEqual({
+      email: "someone@example.com",
+      password: "whatever",
+    });
   });
 
   it("rejects a non-admin account without writing cookies", async () => {

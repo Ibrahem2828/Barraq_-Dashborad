@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       message: "Token verified",
     });
   } catch (error) {
-    const { status } = logBackendFailure(
+    const { status, code } = logBackendFailure(
       "auth/verify",
       error,
       startedAt,
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       {
         success: false,
         message: "Authentication service is temporarily unavailable",
-        code: "server_error",
+        code,
       },
       { status },
     );

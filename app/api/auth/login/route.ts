@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     });
     return withAuthCookies(response, access, refresh);
   } catch (error) {
-    const { status } = logBackendFailure(
+    const { status, code } = logBackendFailure(
       "auth/login",
       error,
       startedAt,
@@ -149,6 +149,7 @@ export async function POST(request: Request) {
       {
         success: false,
         message: "Authentication service is temporarily unavailable",
+        code,
       },
       { status },
     );

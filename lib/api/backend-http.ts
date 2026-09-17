@@ -70,6 +70,29 @@ export class BackendRedirectError extends Error {
   }
 }
 
+export class BackendResponseError extends Error {
+  constructor(public readonly upstreamStatus: number) {
+    super(`Unexpected backend response (status ${upstreamStatus})`);
+    this.name = "BackendResponseError";
+  }
+}
+
+function errorCodes(error: unknown): Set<string> {
+  const codes = new Set<string>();
+  const seen = new Set<object>();
+  const pending: unknown[] = [error];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+    const record = current as { code?: unknown; cause?: unknown; errors?: unknown };
+    if (typeof record.code === "string") codes.add(record.code);
+    if (record.cause) pending.push(record.cause);
+    if (Array.isArray(record.errors)) pending.push(...record.errors);
+  }
+  return codes;
+}
+
 export async function backendRequest<T = unknown>(
   path: string,
   config: AxiosRequestConfig = {},
@@ -111,25 +134,41 @@ export function classifyBackendError(error: unknown): {
   if (error instanceof BackendRedirectError) {
     return { status: 502, code: "upstream_redirect" };
   }
+  if (error instanceof BackendResponseError) {
+    return {
+      status: error.upstreamStatus,
+      code: "upstream_response_error",
+    };
+  }
   if (axios.isAxiosError(error)) {
-    if (error.code === "ECONNABORTED") {
+    const codes = errorCodes(error);
+    if (
+      codes.has("ECONNABORTED") ||
+      codes.has("ETIMEDOUT") ||
+      codes.has("UND_ERR_CONNECT_TIMEOUT")
+    ) {
       return { status: 504, code: "upstream_timeout" };
     }
-    const causeCode = (error.cause as { code?: string } | undefined)?.code;
     if (
       [
         "ERR_TLS_CERT_ALTNAME_INVALID",
         "DEPTH_ZERO_SELF_SIGNED_CERT",
         "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
         "EPROTO",
-      ].includes(causeCode ?? "")
+      ].some((code) => codes.has(code))
     ) {
       return { status: 502, code: "upstream_tls_error" };
     }
     if (
-      causeCode === "ECONNREFUSED" ||
-      causeCode === "ENOTFOUND" ||
-      causeCode === "EAI_AGAIN"
+      [
+        "ECONNREFUSED",
+        "ECONNRESET",
+        "ENETUNREACH",
+        "EHOSTUNREACH",
+        "ENOTFOUND",
+        "EAI_AGAIN",
+        "UND_ERR_SOCKET",
+      ].some((code) => codes.has(code))
     ) {
       return { status: 502, code: "upstream_unreachable" };
     }

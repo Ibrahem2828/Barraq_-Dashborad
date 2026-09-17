@@ -78,9 +78,31 @@ async function proxy(
     );
   }
 
+  const startedAt = Date.now();
+  const requestId = request.headers.get("x-request-id");
   const store = await cookies();
   let access = store.get(ACCESS_COOKIE)?.value ?? null;
-  if (!access) access = await refreshAccessToken();
+  try {
+    // This refresh performs an upstream request. Classify it just like the
+    // later proxied request instead of allowing a connect/timeout/TLS error
+    // to become an unhandled Next.js 500.
+    if (!access) access = await refreshAccessToken();
+  } catch (error) {
+    const { status, code } = logBackendFailure(
+      `bff/${safePath}/refresh`,
+      error,
+      startedAt,
+      requestId,
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Upstream service is temporarily unavailable",
+        code,
+      },
+      { status, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (!access) {
     await clearAuthCookies();
     return NextResponse.json(
@@ -118,7 +140,6 @@ async function proxy(
     });
   };
 
-  const startedAt = Date.now();
   let response: Awaited<ReturnType<typeof forward>>;
   try {
     response = await forward(access);
@@ -131,7 +152,7 @@ async function proxy(
       `bff/${safePath}`,
       error,
       startedAt,
-      request.headers.get("x-request-id"),
+      requestId,
     );
     return NextResponse.json(
       {
@@ -160,9 +181,9 @@ async function proxy(
       : "application/json; charset=utf-8",
   );
   next.headers.set("Cache-Control", "no-store");
-  const requestId = response.headers["x-request-id"];
-  if (typeof requestId === "string")
-    next.headers.set("X-Request-ID", requestId);
+  const upstreamRequestId = response.headers["x-request-id"];
+  if (typeof upstreamRequestId === "string")
+    next.headers.set("X-Request-ID", upstreamRequestId);
   return next;
 }
 

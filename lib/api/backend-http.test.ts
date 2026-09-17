@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getBackendUrl } from "@/lib/api/backend-http";
+import axios from "axios";
+import {
+  BackendResponseError,
+  classifyBackendError,
+  getBackendUrl,
+} from "@/lib/api/backend-http";
 
 describe("getBackendUrl", () => {
   it("normalizes slashes and adds exactly one Django trailing slash", () => {
@@ -32,5 +37,22 @@ describe("getBackendUrl", () => {
     "/bad%encoding",
   ])("rejects unsafe or externally-routable path %s", (path) => {
     expect(() => getBackendUrl(path)).toThrow("Invalid backend path");
+  });
+
+  it("classifies nested fetch-adapter connection failures", () => {
+    const cause = new AggregateError([
+      Object.assign(new Error("connect refused"), { code: "ECONNREFUSED" }),
+    ]);
+    const error = new axios.AxiosError("Network Error", "ERR_NETWORK");
+    Object.defineProperty(error, "cause", { value: cause });
+
+    expect(classifyBackendError(error)).toEqual({
+      status: 502,
+      code: "upstream_unreachable",
+    });
+    expect(classifyBackendError(new BackendResponseError(503))).toEqual({
+      status: 503,
+      code: "upstream_response_error",
+    });
   });
 });

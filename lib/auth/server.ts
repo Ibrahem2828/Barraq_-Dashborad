@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies, headers } from "next/headers";
-import { backendJson } from "@/lib/api/backend-http";
+import { BackendResponseError, backendJson } from "@/lib/api/backend-http";
 import { isApiBindingEnabled } from "@/lib/api/binding";
 import {
   ACCESS_COOKIE,
@@ -69,6 +69,9 @@ export async function refreshAccessToken(): Promise<string | null> {
     method: "POST",
     data: { refresh },
   });
+  if (response.status >= 500) {
+    throw new BackendResponseError(response.status);
+  }
   if (response.status < 200 || response.status >= 300) return null;
   const payload = (
     response.data && typeof response.data === "object" ? response.data : {}
