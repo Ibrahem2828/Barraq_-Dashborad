@@ -143,6 +143,31 @@ describe("POST /api/auth/login — backend integration contract", () => {
     });
   });
 
+  it("preserves Django's 401 semantics when fake credentials reach the canonical login route", async () => {
+    setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json(
+        { success: false, message: "Invalid credentials", code: "authentication_error" },
+        { status: 401 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(loginRequest());
+    const payload = (await response.json()) as { code: string };
+    const upstream = fetchMock.mock.calls[0]?.[0] as Request;
+
+    expect(response.status).toBe(401);
+    expect(payload.code).toBe("authentication_error");
+    expect(upstream.url).toBe("https://api.baraqapp.com/api/v1/auth/login/");
+    expect(upstream.headers.get("content-type")).toContain("application/json");
+    await expect(upstream.clone().json()).resolves.toEqual({
+      email: "someone@example.com",
+      password: "whatever",
+    });
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("rejects a non-admin account without writing cookies", async () => {
     setEnv({ NODE_ENV: "production", API_BINDING_ENABLED: "true" });
     vi.stubGlobal(

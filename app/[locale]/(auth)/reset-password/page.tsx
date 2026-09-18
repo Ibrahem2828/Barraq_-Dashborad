@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/Icon";
 import { authApi } from "@/lib/api/auth-client";
 import { useDictionary } from "@/lib/i18n/useDictionary";
 import { toast } from "@/lib/ui/toast";
+import { nativeTextValue } from "@/lib/auth/native-form";
 import type { Locale } from "@/types/api";
 
 export default function ResetPasswordPage() {
@@ -33,16 +34,23 @@ export default function ResetPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    const formData = new FormData(event.currentTarget);
+    const submittedNewPassword = nativeTextValue(formData, "new_password", newPassword);
+    const submittedConfirmPassword = nativeTextValue(
+      formData,
+      "confirm_password",
+      confirmPassword,
+    );
 
     if (missingLink) {
       setError(dictionary.resetLinkInvalid);
       return;
     }
-    if (newPassword.length < 10) {
+    if (submittedNewPassword.length < 10) {
       setError(dictionary.passwordMinLength);
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (submittedNewPassword !== submittedConfirmPassword) {
       setError(dictionary.passwordMismatch);
       return;
     }
@@ -50,7 +58,7 @@ export default function ResetPasswordPage() {
     setBusy(true);
     try {
       const payload = await authApi.passwordResetConfirm(
-        { uid, token, new_password: newPassword },
+        { uid, token, new_password: submittedNewPassword },
         dictionary.passwordResetConfirmFailed
       );
       toast.success(payload.message ?? dictionary.passwordResetConfirmed);
@@ -122,6 +130,7 @@ export default function ResetPasswordPage() {
           <label className="login-field">
             <span>{dictionary.newPassword}</span>
             <input
+              name="new_password"
               type="password"
               autoComplete="new-password"
               value={newPassword}
@@ -135,6 +144,7 @@ export default function ResetPasswordPage() {
           <label className="login-field">
             <span>{dictionary.confirmNewPassword}</span>
             <input
+              name="confirm_password"
               type="password"
               autoComplete="new-password"
               value={confirmPassword}

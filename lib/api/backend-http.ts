@@ -21,6 +21,7 @@ export function getBackendUrl(path: string): string {
   const search = queryIndex === -1 ? "" : path.slice(queryIndex);
   const segments = pathname.split("/").filter(Boolean);
   if (
+    (pathname.startsWith("//") && !pathname.startsWith("///")) ||
     /^[a-z][a-z\d+.-]*:/iu.test(pathname) ||
     segments.some((segment) => {
       try {

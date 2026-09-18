@@ -14,9 +14,6 @@ describe("getBackendUrl", () => {
     expect(getBackendUrl("admin/me")).toBe(
       "https://api.baraqapp.com/api/v1/admin/me/",
     );
-    expect(getBackendUrl("//evil.example/path")).toBe(
-      "https://api.baraqapp.com/api/v1/evil.example/path/",
-    );
   });
 
   it("preserves an encoded query without re-encoding it", () => {
@@ -29,6 +26,7 @@ describe("getBackendUrl", () => {
 
   it.each([
     "https://evil.example/path",
+    "//evil.example/path",
     "/../admin",
     "/%2e%2e/admin",
     "/safe%2fescape",

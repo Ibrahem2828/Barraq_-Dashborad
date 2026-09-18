@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/Icon";
 import { authApi } from "@/lib/api/auth-client";
 import { useDictionary } from "@/lib/i18n/useDictionary";
 import { toast } from "@/lib/ui/toast";
+import { nativeTextValue } from "@/lib/auth/native-form";
 import type { Locale } from "@/types/api";
 
 export default function LoginPage() {
@@ -25,10 +26,13 @@ export default function LoginPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const submittedEmail = nativeTextValue(formData, "email", email).trim().toLowerCase();
+    const submittedPassword = nativeTextValue(formData, "password", password);
     setBusy(true);
     try {
       await authApi.login(
-        { email: email.trim().toLowerCase(), password },
+        { email: submittedEmail, password: submittedPassword },
         dictionary.loginFailed
       );
       toast.success(dictionary.loginSuccess);
@@ -108,6 +112,7 @@ export default function LoginPage() {
           <label className="login-field">
             <span>{dictionary.email}</span>
             <input
+              name="email"
               type="email"
               autoComplete="email"
               value={email}
@@ -120,6 +125,7 @@ export default function LoginPage() {
           <label className="login-field">
             <span>{dictionary.password}</span>
             <input
+              name="password"
               type="password"
               autoComplete="current-password"
               value={password}

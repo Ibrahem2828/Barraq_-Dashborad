@@ -32,7 +32,7 @@
 | 🔌 الباك إند | عبر `BACKEND_API_URL` (Server-only) |
 
 ```text
-BACKEND_API_URL → https://api.barraq.xn--mgbaab0cxheq.tech/api/v1
+BACKEND_API_URL → https://api.baraqapp.com/api/v1
 ```
 
 > 📄 تغطية واجهات الـ API مفصّلة في [`DASHBOARD_API_COVERAGE.md`](./DASHBOARD_API_COVERAGE.md)
@@ -151,6 +151,10 @@ node scripts/validate-dashboard.cjs
 
 ⚠️ المتصفح **لا** يتصل مباشرة بالباك إند.
 
+قيم تسجيل الدخول تُقرأ عند الإرسال من `FormData` الفعلي، مع بقاء React state كقيمة
+احتياطية. هذا يمنع مديري كلمات المرور من إظهار بريد/كلمة مرور في الحقول بينما يرسل
+React قيماً قديمة فارغة. يظل الطلب خاضعاً لكل تحقق backend وRBAC المعتاد.
+
 ---
 
 ## 🐳 النشر على Coolify
@@ -165,7 +169,7 @@ node scripts/validate-dashboard.cjs
 نطاق مقترح:
 
 ```text
-https://dashboard.barraq.xn--mgbaab0cxheq.tech
+https://dashboard.baraqapp.com
 ```
 
 ---

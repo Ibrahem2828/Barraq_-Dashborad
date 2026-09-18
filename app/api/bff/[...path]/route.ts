@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { backendRequest, logBackendFailure } from "@/lib/api/backend-http";
+import {
+  backendRequest,
+  getBackendUrl,
+  logBackendFailure,
+} from "@/lib/api/backend-http";
 import { bindingDisabledPayload, isApiBindingEnabled } from "@/lib/api/binding";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import {
@@ -52,6 +56,17 @@ async function proxy(
 
   const search = request.nextUrl.searchParams.toString();
   const targetPath = `${safePath}/${search ? `?${search}` : ""}`;
+  try {
+    // Validate before cookie refresh or any upstream work. The absolute URL
+    // is intentionally discarded; backendRequest rebuilds it from the same
+    // trusted base when forwarding.
+    getBackendUrl(targetPath);
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "Invalid path", code: "INVALID_PATH" },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (declaredLength > maxBodyBytes) {

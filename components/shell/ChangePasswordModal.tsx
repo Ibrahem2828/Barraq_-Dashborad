@@ -8,6 +8,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { isUnauthorizedError } from "@/lib/auth/session-expired";
 import { useDictionary } from "@/lib/i18n/useDictionary";
 import { toast } from "@/lib/ui/toast";
+import { nativeTextValue } from "@/lib/auth/native-form";
 
 export function ChangePasswordModal({
   open,
@@ -22,11 +23,18 @@ export function ChangePasswordModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    const formData = new FormData(event.currentTarget);
+    const submittedCurrentPassword = nativeTextValue(
+      formData,
+      "current_password",
+      currentPassword,
+    );
+    const submittedNewPassword = nativeTextValue(formData, "new_password", newPassword);
 
-    if (newPassword.trim().length < 10) {
+    if (submittedNewPassword.trim().length < 10) {
       setError(dictionary.passwordMinLength);
       return;
     }
@@ -34,8 +42,8 @@ export function ChangePasswordModal({
     setBusy(true);
     try {
       await api.post(endpoints.auth.changePassword, {
-        current_password: currentPassword,
-        new_password: newPassword
+        current_password: submittedCurrentPassword,
+        new_password: submittedNewPassword
       });
       toast.success(dictionary.passwordChanged);
       setCurrentPassword("");
@@ -59,6 +67,7 @@ export function ChangePasswordModal({
         <label className="resource-form__field">
           <span>{dictionary.currentPassword} *</span>
           <input
+            name="current_password"
             type="password"
             required
             autoComplete="current-password"
@@ -69,6 +78,7 @@ export function ChangePasswordModal({
         <label className="resource-form__field">
           <span>{dictionary.newPassword} *</span>
           <input
+            name="new_password"
             type="password"
             required
             minLength={10}

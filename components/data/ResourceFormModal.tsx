@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useDictionary } from "@/lib/i18n/useDictionary";
+import { nativeTextValue } from "@/lib/auth/native-form";
 
 export type FormValue = string | number | boolean;
 export type FormValues = Record<string, FormValue>;
@@ -56,9 +57,20 @@ export function ResourceFormModal({
     setValues(next);
   }, [open, fields, initialValues]);
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit(values);
+    const formData = new FormData(event.currentTarget);
+    const submittedValues = { ...values };
+    for (const field of fields) {
+      if (field.type !== "checkbox") {
+        submittedValues[field.key] = nativeTextValue(
+          formData,
+          field.key,
+          String(values[field.key] ?? ""),
+        );
+      }
+    }
+    await onSubmit(submittedValues);
   }
 
   return (
@@ -76,6 +88,7 @@ export function ResourceFormModal({
               <label key={field.key} className="resource-form__check">
                 <input
                   id={id}
+                  name={field.key}
                   type="checkbox"
                   checked={Boolean(values[field.key])}
                   onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.checked }))}
@@ -94,6 +107,7 @@ export function ResourceFormModal({
               {field.type === "textarea" ? (
                 <textarea
                   id={id}
+                  name={field.key}
                   required={field.required}
                   value={String(values[field.key] ?? "")}
                   placeholder={field.placeholder}
@@ -103,6 +117,7 @@ export function ResourceFormModal({
               ) : field.type === "select" ? (
                 <select
                   id={id}
+                  name={field.key}
                   required={field.required}
                   value={String(values[field.key] ?? "")}
                   onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
@@ -117,6 +132,7 @@ export function ResourceFormModal({
               ) : (
                 <input
                   id={id}
+                  name={field.key}
                   type={field.type ?? "text"}
                   required={field.required}
                   minLength={field.minLength}

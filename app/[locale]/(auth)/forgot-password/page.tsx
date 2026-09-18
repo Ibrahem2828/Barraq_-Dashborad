@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/Icon";
 import { authApi } from "@/lib/api/auth-client";
 import { useDictionary } from "@/lib/i18n/useDictionary";
 import { toast } from "@/lib/ui/toast";
+import { nativeTextValue } from "@/lib/auth/native-form";
 import type { Locale } from "@/types/api";
 
 export default function ForgotPasswordPage() {
@@ -22,10 +23,13 @@ export default function ForgotPasswordPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submittedEmail = nativeTextValue(new FormData(event.currentTarget), "email", email)
+      .trim()
+      .toLowerCase();
     setBusy(true);
     try {
       const payload = await authApi.passwordReset(
-        { email: email.trim().toLowerCase() },
+        { email: submittedEmail },
         dictionary.passwordResetFailed
       );
       toast.success(payload.message ?? dictionary.passwordResetSent);
@@ -83,6 +87,7 @@ export default function ForgotPasswordPage() {
           <label className="login-field">
             <span>{dictionary.email}</span>
             <input
+              name="email"
               type="email"
               autoComplete="email"
               value={email}
