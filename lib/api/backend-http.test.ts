@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import axios from "axios";
 import {
   BackendResponseError,
   classifyBackendError,
@@ -37,17 +36,39 @@ describe("getBackendUrl", () => {
     expect(() => getBackendUrl(path)).toThrow("Invalid backend path");
   });
 
-  it("classifies nested fetch-adapter connection failures", () => {
-    const cause = new AggregateError([
-      Object.assign(new Error("connect refused"), { code: "ECONNREFUSED" }),
-    ]);
-    const error = new axios.AxiosError("Network Error", "ERR_NETWORK");
-    Object.defineProperty(error, "cause", { value: cause });
-
-    expect(classifyBackendError(error)).toEqual({
+  it("classifies the nested cause chain native fetch actually throws", () => {
+    // Node's fetch surfaces every transport failure as `TypeError: fetch
+    // failed` and hides the real code one or two levels down, sometimes
+    // inside an AggregateError when several addresses were tried.
+    const refused = Object.assign(new TypeError("fetch failed"), {
+      cause: new AggregateError([
+        Object.assign(new Error("connect refused"), { code: "ECONNREFUSED" }),
+      ]),
+    });
+    expect(classifyBackendError(refused)).toEqual({
       status: 502,
       code: "upstream_unreachable",
     });
+
+    const dns = Object.assign(new TypeError("fetch failed"), {
+      cause: Object.assign(new Error("getaddrinfo ENOTFOUND"), { code: "ENOTFOUND" }),
+    });
+    expect(classifyBackendError(dns)).toEqual({
+      status: 502,
+      code: "upstream_dns_error",
+    });
+
+    // A transport failure whose code we don't recognize is still a transport
+    // failure, never a 503 "unknown".
+    expect(classifyBackendError(new TypeError("fetch failed"))).toEqual({
+      status: 502,
+      code: "upstream_unreachable",
+    });
+
+    expect(
+      classifyBackendError(new DOMException("timed out", "TimeoutError")),
+    ).toEqual({ status: 504, code: "upstream_timeout" });
+
     expect(classifyBackendError(new BackendResponseError(503))).toEqual({
       status: 503,
       code: "upstream_response_error",

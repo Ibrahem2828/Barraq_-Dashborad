@@ -130,14 +130,19 @@ describe("POST /api/auth/login — backend integration contract", () => {
     expect(cookies).toContain("Max-Age=1800");
     expect(cookies).toContain("Max-Age=1209600");
 
-    const firstRequest = fetchMock.mock.calls[0]?.[0] as Request;
-    expect(firstRequest.url).toBe(
-      "https://api.baraqapp.com/api/v1/auth/login/",
-    );
-    expect(firstRequest.redirect).toBe("manual");
-    expect(firstRequest.headers.get("x-forwarded-proto")).toBe("https");
-    expect(firstRequest.headers.get("x-request-id")).toBe("test-request-id");
-    await expect(firstRequest.clone().json()).resolves.toEqual({
+    // The transport must call fetch as (url, init) with an already-serialized
+    // string body. Handing fetch a Request object with a stream body is what
+    // let Next.js's patched global fetch rebuild the request and drop the
+    // credentials — see lib/api/backend-http.ts and tests/wire/.
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.baraqapp.com/api/v1/auth/login/");
+    expect(url).not.toBeInstanceOf(Request);
+    expect(init.redirect).toBe("manual");
+    expect(typeof init.body).toBe("string");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["X-Forwarded-Proto"]).toBe("https");
+    expect(headers["X-Request-ID"]).toBe("test-request-id");
+    expect(JSON.parse(init.body as string)).toEqual({
       email: "someone@example.com",
       password: "whatever",
     });
@@ -155,13 +160,15 @@ describe("POST /api/auth/login — backend integration contract", () => {
 
     const response = await POST(loginRequest());
     const payload = (await response.json()) as { code: string };
-    const upstream = fetchMock.mock.calls[0]?.[0] as Request;
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 
     expect(response.status).toBe(401);
     expect(payload.code).toBe("authentication_error");
-    expect(upstream.url).toBe("https://api.baraqapp.com/api/v1/auth/login/");
-    expect(upstream.headers.get("content-type")).toContain("application/json");
-    await expect(upstream.clone().json()).resolves.toEqual({
+    expect(url).toBe("https://api.baraqapp.com/api/v1/auth/login/");
+    expect((init.headers as Record<string, string>)["Content-Type"]).toContain(
+      "application/json",
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
       email: "someone@example.com",
       password: "whatever",
     });

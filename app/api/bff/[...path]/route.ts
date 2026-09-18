@@ -144,14 +144,14 @@ async function proxy(
     const requestId = request.headers.get("x-request-id");
     if (requestId) headers["X-Request-ID"] = requestId;
 
+    // The buffered bytes go out exactly as they arrived — no re-serialization,
+    // so a browser-generated multipart boundary is preserved and the retry
+    // below replays an identical body.
     return backendRequest<ArrayBuffer>(targetPath, {
       method: request.method,
       headers,
-      data:
-        rawBody && rawBody.byteLength > 0 ? Buffer.from(rawBody) : undefined,
+      body: rawBody && rawBody.byteLength > 0 ? rawBody : undefined,
       responseType: "arraybuffer",
-      // Avoid axios transforming empty bodies oddly for GET.
-      transformRequest: [(data) => data],
     });
   };
 
@@ -181,11 +181,7 @@ async function proxy(
   if (response.status === 401) await clearAuthCookies();
 
   const responseBody =
-    response.data instanceof ArrayBuffer
-      ? response.data
-      : Buffer.isBuffer(response.data)
-        ? response.data
-        : new Uint8Array();
+    response.data instanceof ArrayBuffer ? response.data : new Uint8Array();
 
   const next = new NextResponse(responseBody, { status: response.status });
   const contentType = response.headers["content-type"];

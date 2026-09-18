@@ -40,7 +40,7 @@ describe("Dashboard generic BFF transport", () => {
     mocks.validateMutationCsrf.mockResolvedValue(true);
     mocks.backendRequest.mockResolvedValue({
       status: 200,
-      data: Buffer.from('{"success":true}'),
+      data: new TextEncoder().encode('{"success":true}').buffer,
       headers: { "content-type": "application/json" },
     });
   });
@@ -60,14 +60,14 @@ describe("Dashboard generic BFF transport", () => {
     const response = await handler(request, context(["admin", "subjects"]));
     const [targetPath, init] = mocks.backendRequest.mock.calls[0] as [
       string,
-      { method: string; headers: Record<string, string>; data: Buffer },
+      { method: string; headers: Record<string, string>; body: ArrayBuffer },
     ];
 
     expect(response.status).toBe(200);
     expect(targetPath).toBe("admin/subjects/");
     expect(init.method).toBe(method);
     expect(init.headers["Content-Type"]).toBe("application/json");
-    expect(JSON.parse(init.data.toString("utf8"))).toEqual(payload);
+    expect(JSON.parse(new TextDecoder().decode(init.body))).toEqual(payload);
   });
 
   it("preserves multipart boundaries and bytes without rebuilding FormData", async () => {
@@ -82,10 +82,10 @@ describe("Dashboard generic BFF transport", () => {
     await POST(request, context(["admin", "sources"]));
     const [, init] = mocks.backendRequest.mock.calls[0] as [
       string,
-      { headers: Record<string, string>; data: Buffer },
+      { headers: Record<string, string>; body: ArrayBuffer },
     ];
     const contentType = init.headers["Content-Type"];
-    const raw = init.data.toString("utf8");
+    const raw = new TextDecoder().decode(init.body);
 
     expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
     expect(raw).toContain("lesson.txt");

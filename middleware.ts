@@ -32,12 +32,19 @@ export async function middleware(request: NextRequest) {
   const isPublicAuth = publicAuthPaths.has(pathname);
   const session = await resolveEdgeSession(request);
 
+  // Every denial fails closed on page access. Only a denial Django actually
+  // issued justifies destroying the cookies: when the backend simply could
+  // not be reached, the admin's refresh token is probably still valid, and
+  // wiping it would turn a momentary outage into a forced re-login for
+  // everyone. See lib/auth/edge-session.ts::EdgeSessionDenialReason.
+  const mayClearCookies = !session.authenticated && session.reason !== "unreachable";
+
   if (!session.authenticated && !isPublicAuth) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/login`;
     url.searchParams.set("next", pathname);
     const response = NextResponse.redirect(url);
-    clearAuthCookiesOn(response);
+    if (mayClearCookies) clearAuthCookiesOn(response);
     return response;
   }
 
@@ -53,7 +60,7 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   if (session.authenticated) {
     session.attach?.(response);
-  } else {
+  } else if (mayClearCookies) {
     // Public auth pages: drop forged / stale auth cookies.
     clearAuthCookiesOn(response);
   }
