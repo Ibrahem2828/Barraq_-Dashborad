@@ -21,6 +21,9 @@ export interface NavItem {
 export const navigation: NavItem[] = [
   { key: "overview", href: "", icon: "grid", permission: "dashboard.view", section: "dashboard" },
   { key: "users", href: "/users", icon: "users", permission: "users.view", section: "users" },
+  { key: "organizations", href: "/organizations", icon: "shield", permission: "organizations.view", section: "organizations" },
+  { key: "classes", href: "/classes", icon: "book", permission: "classes.view", section: "classes" },
+  { key: "joinRequests", href: "/join-requests", icon: "users", permission: "join_requests.view", section: "join_requests" },
   { key: "admins", href: "/admins", icon: "shield", permission: "admins.view", section: "admins" },
   { key: "roles", href: "/roles", icon: "shield", permission: "roles.view", section: "roles" },
   { key: "education", href: "/education", icon: "book", section: "subjects" },

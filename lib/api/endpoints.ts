@@ -27,7 +27,11 @@ export const endpoints = {
     supportTickets: "admin/support-tickets/",
     subscriptionPlans: "admin/subscription-plans/",
     userSubscriptions: "admin/user-subscriptions/",
-    subscriptionUsage: "admin/subscription-usage/"
+    subscriptionUsage: "admin/subscription-usage/",
+    organizations: "admin/organizations/",
+    classes: "admin/classes/",
+    invitations: "admin/invitations/",
+    joinRequests: "admin/join-requests/"
   },
   ai: {
     serviceHealth: "ai/service-health/"
@@ -61,4 +65,29 @@ export function supportTicketMessagesEndpoint(ticketId: string | number): string
 
 export function aiJobCancelEndpoint(publicId: string | number): string {
   return `${endpoints.admin.aiJobs}${publicId}/cancel/`;
+}
+
+/**
+ * Organization resources are addressed by `public_id`, never by the database
+ * id. The backend scopes each of these to the caller, so a response that
+ * omits a row means it is not theirs -- the dashboard never needs to filter
+ * by organization itself, and must not try: a client-side filter over a
+ * server-side boundary is how the two drift apart.
+ */
+export function organizationActionEndpoint(
+  publicId: string,
+  action: "archive" | "overview" | "members"
+): string {
+  return `${endpoints.admin.organizations}${publicId}/${action}/`;
+}
+
+export function classActionEndpoint(
+  publicId: string,
+  action: "archive" | "members" | "invitations" | "invitations/create"
+): string {
+  return `${endpoints.admin.classes}${publicId}/${action}/`;
+}
+
+export function joinRequestActionEndpoint(publicId: string, action: "approve" | "reject"): string {
+  return `${endpoints.admin.joinRequests}${publicId}/${action}/`;
 }
