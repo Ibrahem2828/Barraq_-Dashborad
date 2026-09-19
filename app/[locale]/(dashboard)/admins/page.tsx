@@ -2,8 +2,9 @@
 
 import type { FormField } from "@/components/data/ResourceFormModal";
 import { valuesToPayload } from "@/components/data/ResourceFormModal";
+import { AdminScopePanel } from "@/components/data/AdminScopePanel";
 import { ResourcePage } from "@/components/data/ResourcePage";
-import { adminAssignRolesEndpoint, endpoints } from "@/lib/api/endpoints";
+import { endpoints } from "@/lib/api/endpoints";
 import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
 import type { AnyRecord } from "@/types/api";
 
@@ -13,6 +14,7 @@ function parseRoleCodes(input: string): string[] {
     .map((part) => part.trim())
     .filter(Boolean);
 }
+
 
 export default function AdminsPage() {
   const dictionary = useDictionary();
@@ -80,24 +82,18 @@ export default function AdminsPage() {
         updateSuccess: dictionary.adminUpdated,
         deleteSuccess: dictionary.adminDeleted
       }}
-      rowActions={[
-        {
-          label: dictionary.assignRoles,
-          variant: "primary",
-          endpoint: (row) => adminAssignRolesEndpoint(String(row.id)),
-          successToast: dictionary.adminRolesAssigned,
-          compose: {
-            title: dictionary.assignRoles,
-            label: dictionary.roleCodesHint,
-            placeholder: dictionary.assignRolesPrompt,
-            buildBody: (input) => {
-              const role_codes = parseRoleCodes(input);
-              if (!role_codes.length) throw new Error(dictionary.promptRequired);
-              return { role_codes };
-            }
-          }
-        }
-      ]}
+      hydrateDetail
+      renderDetailExtra={(admin, { refreshDetail }) => (
+        // Roles and scope are chosen together: the backend refuses to guess
+        // a scope, and a row action limited to one text box could only ever
+        // name roles.
+        <AdminScopePanel
+          admin={admin}
+          onAssigned={async () => {
+            await refreshDetail();
+          }}
+        />
+      )}
       columns={[
         { key: "id", label: "#", type: "number" },
         { key: "full_name", label: dictionary.colName, mobile: "title" },
