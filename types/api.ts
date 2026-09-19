@@ -56,6 +56,8 @@ export interface AdminMe {
   is_superuser: boolean;
   is_staff: boolean;
   allowed_sections: Record<string, boolean>;
+  /** Backend-authoritative app access; see get_allowed_apps in the API. */
+  allowed_apps: string[];
 }
 
 export interface SystemHealth {

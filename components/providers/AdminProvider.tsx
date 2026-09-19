@@ -78,9 +78,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       can(permission, section) {
         if (!admin) return false;
         if (admin.is_superuser) return true;
-        if (permission && admin.permissions.includes(permission)) return true;
-        if (section && admin.allowed_sections[section]) return true;
-        return !permission && !section;
+        // A named permission is decisive. This used to fall through to the
+        // section check, so holding `users.view` (which grants the `users`
+        // section) also satisfied `can("users.suspend", "users")` -- the UI
+        // offered actions the backend then refused with a 403.
+        if (permission) return admin.permissions.includes(permission);
+        if (section) return Boolean(admin.allowed_sections[section]);
+        return true;
       },
       reload
     }),

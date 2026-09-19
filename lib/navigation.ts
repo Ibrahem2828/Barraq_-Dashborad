@@ -10,6 +10,14 @@ export interface NavItem {
   section?: string;
 }
 
+/**
+ * `section` and `permission` must use the backend's own identifiers --
+ * SECTION_PERMISSIONS and DEFAULT_PERMISSIONS in
+ * apps/admin_dashboard/services.py. A key that does not exist there
+ * resolves to `undefined` in `allowed_sections` and silently hides the item
+ * from every non-superuser admin, which is how education, study plans and
+ * audit logs became invisible.
+ */
 export const navigation: NavItem[] = [
   { key: "overview", href: "", icon: "grid", permission: "dashboard.view", section: "dashboard" },
   { key: "users", href: "/users", icon: "users", permission: "users.view", section: "users" },
@@ -17,14 +25,14 @@ export const navigation: NavItem[] = [
   { key: "roles", href: "/roles", icon: "shield", permission: "roles.view", section: "roles" },
   { key: "education", href: "/education", icon: "book", section: "subjects" },
   { key: "sources", href: "/sources", icon: "file", section: "sources" },
-  { key: "studyPlans", href: "/study-plans", icon: "calendar", section: "study_plans" },
+  { key: "studyPlans", href: "/study-plans", icon: "calendar", section: "study" },
   { key: "quizzes", href: "/quizzes", icon: "quiz", section: "quizzes" },
   { key: "aiJobs", href: "/ai-jobs", icon: "spark", section: "ai" },
   { key: "aiFeedback", href: "/ai-feedback", icon: "star", section: "ai" },
   { key: "aiResults", href: "/ai-results", icon: "gem", section: "ai" },
   { key: "subscriptions", href: "/subscriptions", icon: "credit", section: "subscriptions" },
   { key: "support", href: "/support", icon: "support", section: "support" },
-  { key: "auditLogs", href: "/audit-logs", icon: "history", permission: "audit.view", section: "audit" },
+  { key: "auditLogs", href: "/audit-logs", icon: "history", permission: "audit_logs.view", section: "audit_logs" },
   { key: "system", href: "/system", icon: "health", permission: "system.health", section: "system" }
 ];
 
