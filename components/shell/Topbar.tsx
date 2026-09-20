@@ -26,6 +26,20 @@ export function Topbar({
   const queryClient = useQueryClient();
   const { admin } = useAdmin();
   const { theme, toggleTheme } = useTheme();
+  // Which tenant this session acts on. A scoped operator seeing an empty
+  // list is looking at a real answer -- the backend grants nothing without
+  // a scope -- so it says so rather than leaving the field blank.
+  const scopeLabel = admin?.is_superuser
+    ? dictionary.scopeGlobal
+    : (admin?.scopes ?? []).length === 0
+      ? dictionary.noScope
+      : (admin?.scopes ?? [])
+          .map((scope) =>
+            scope.type === "global"
+              ? dictionary.scopeGlobal
+              : (scope.classroom?.name ?? scope.organization?.name ?? scope.type)
+          )
+          .join("، ");
   const [busy, setBusy] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
 
@@ -135,6 +149,7 @@ export function Topbar({
                 <strong>{displayName}</strong>
                 <small>
                   <span className="topbar__role">{roleLabel}</span>
+                  {scopeLabel ? <span className="topbar__scope">{scopeLabel}</span> : null}
                   {admin?.email ? <span className="topbar__email">{admin.email}</span> : null}
                 </small>
               </div>

@@ -58,6 +58,15 @@ export interface AdminMe {
   allowed_sections: Record<string, boolean>;
   /** Backend-authoritative app access; see get_allowed_apps in the API. */
   allowed_apps: string[];
+  /** What this account's roles apply to. Empty means platform-wide is absent
+   *  AND no tenant was granted -- which the backend reads as no access. */
+  scopes?: AdminScope[];
+}
+
+export interface AdminScope {
+  type: "global" | "organization" | "class";
+  organization?: { public_id: string; name: string; organization_type?: string };
+  classroom?: { public_id: string; name: string };
 }
 
 export interface SystemHealth {
