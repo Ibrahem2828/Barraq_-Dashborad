@@ -117,6 +117,9 @@
   --gradient-brand-soft: linear-gradient(135deg, rgba(232, 160, 37, 0.22), rgba(201, 135, 27, 0.16));
   /* Dark ink on gold: white on this gold is around 2:1 and fails AA. */
   --on-brand: #14172b;
+  /* One focus ring for the whole app. Gold, because the focus
+     indicator belongs to the brand as much as the button does. */
+  --focus-ring: color-mix(in srgb, var(--gold) 72%, white);
   --gradient-shell: radial-gradient(ellipse 70% 45% at 85% -5%, rgba(123, 46, 232, 0.07), transparent 55%),
     radial-gradient(ellipse 50% 35% at 0% 100%, rgba(25, 119, 233, 0.04), transparent 50%),
     var(--background);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Field";
 import { api } from "@/lib/api/client";
 import { classMemberActionEndpoint, classMembersEndpoint, endpoints } from "@/lib/api/endpoints";
 import { isUnauthorizedError } from "@/lib/auth/session-expired";
@@ -29,13 +30,17 @@ interface ClassOption {
  * The members of one class, and the two things an operator does to them.
  *
  * Removal keeps the row and marks it removed: a learner who leaves and
- * comes back must not be blocked by their own history, and a class roster
- * with no record of who was in it last term is not a roster.
+ * comes back must not be blocked by their own history, and a roster with no
+ * record of who was in it last term is not a roster.
  *
  * Transfer offers only classes in the same organization. The backend
  * refuses a cross-organization move outright -- moving a learner between
  * schools is an enrolment decision, not a seating change -- so offering it
  * here would only produce an error the operator cannot act on.
+ *
+ * The table scrolls inside its own container rather than stretching the
+ * page, and each row carries its own labelled transfer target so the
+ * controls stay associated when the layout narrows.
  */
 export function ClassMembersPanel({ classroom }: { classroom: AnyRecord }) {
   const dictionary = useDictionary();
@@ -74,7 +79,6 @@ export function ClassMembersPanel({ classroom }: { classroom: AnyRecord }) {
       })
       .then((response) => {
         if (cancelled) return;
-        // Same organization only, and never this class itself.
         setSiblings((response.data?.results ?? []).filter((row) => row.public_id !== publicId));
       })
       .catch(() => {
@@ -106,83 +110,100 @@ export function ClassMembersPanel({ classroom }: { classroom: AnyRecord }) {
     }
   }
 
-  if (members === null) return <p>{dictionary.loading}</p>;
+  if (members === null) {
+    return (
+      <section aria-label={dictionary.members} aria-busy="true">
+        <h4>{dictionary.members}</h4>
+        <p className="muted">{dictionary.loading}</p>
+      </section>
+    );
+  }
 
   return (
-    <section aria-label={dictionary.members} className="flex flex-col gap-3">
+    <section aria-label={dictionary.members} className="members-panel">
       <h4>{dictionary.members}</h4>
+
       {members.length === 0 ? (
         <p className="muted">{dictionary.noMembers}</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">{dictionary.colUser}</th>
-              <th scope="col">{dictionary.status}</th>
-              <th scope="col">{dictionary.actions}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member) => {
-              const active = member.status === "active";
-              return (
-                <tr key={member.id}>
-                  <td>
-                    <strong>{member.user_full_name ?? "—"}</strong>
-                    <br />
-                    <small>{member.user_email ?? ""}</small>
-                  </td>
-                  <td>
-                    <Badge value={member.status} />
-                  </td>
-                  <td>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="danger"
-                        disabled={!active || busy === member.id}
-                        onClick={() => act(member, "remove")}
-                      >
-                        {dictionary.removeMember}
-                      </Button>
-                      {siblings.length > 0 ? (
-                        <>
-                          <label className="sr-only" htmlFor={`transfer-${member.id}`}>
-                            {dictionary.transferTo}
-                          </label>
-                          <select
-                            id={`transfer-${member.id}`}
-                            value={target[member.id] ?? ""}
-                            disabled={!active || busy === member.id}
-                            onChange={(event) =>
-                              setTarget((current) => ({
-                                ...current,
-                                [member.id]: event.target.value
-                              }))
-                            }
-                          >
-                            <option value="">{dictionary.transferTo}</option>
-                            {siblings.map((option) => (
-                              <option key={option.public_id} value={option.public_id}>
-                                {option.name}
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            variant="secondary"
-                            disabled={!active || !target[member.id] || busy === member.id}
-                            onClick={() => act(member, "transfer")}
-                          >
-                            {dictionary.transferMember}
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-wrap">
+          <table className="data-table data-table--compact">
+            <caption className="sr-only">{dictionary.membersDesc}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{dictionary.colUser}</th>
+                <th scope="col">{dictionary.status}</th>
+                <th scope="col">{dictionary.actions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => {
+                const active = member.status === "active";
+                const working = busy === member.id;
+                return (
+                  <tr key={member.id}>
+                    <th scope="row" className="members-panel__who">
+                      <strong>{member.user_full_name ?? "—"}</strong>
+                      <small>{member.user_email ?? ""}</small>
+                    </th>
+                    <td>
+                      <Badge value={member.status} />
+                    </td>
+                    <td>
+                      <div className="members-panel__actions">
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          disabled={!active || working}
+                          onClick={() => act(member, "remove")}
+                        >
+                          {dictionary.removeMember}
+                        </Button>
+
+                        {siblings.length > 0 ? (
+                          <>
+                            <label className="sr-only" htmlFor={`transfer-${member.id}`}>
+                              {/* Named per row: "Transfer to class" alone
+                                  does not say whose membership moves. */}
+                              {`${dictionary.transferTo} — ${member.user_full_name ?? member.user_email ?? ""}`}
+                            </label>
+                            <Select
+                              id={`transfer-${member.id}`}
+                              className="members-panel__target"
+                              value={target[member.id] ?? ""}
+                              disabled={!active || working}
+                              onChange={(event) =>
+                                setTarget((current) => ({
+                                  ...current,
+                                  [member.id]: event.target.value
+                                }))
+                              }
+                            >
+                              <option value="">{dictionary.transferTo}</option>
+                              {siblings.map((option) => (
+                                <option key={option.public_id} value={option.public_id}>
+                                  {option.name}
+                                </option>
+                              ))}
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={!active || !target[member.id] || working}
+                              onClick={() => act(member, "transfer")}
+                            >
+                              {dictionary.transferMember}
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

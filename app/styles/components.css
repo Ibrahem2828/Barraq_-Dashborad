@@ -788,6 +788,12 @@
   gap: 14px;
 }
 
+/* Form primitives.
+   These rules used to live only inside .resource-form, so any control
+   outside that modal -- the member and scope panels, for instance --
+   rendered as a raw browser widget. They are now a primitive the modal
+   happens to use, rather than something the modal owns. */
+.field,
 .resource-form__field,
 .resource-form__check {
   display: grid;
@@ -802,6 +808,25 @@
   gap: 10px;
 }
 
+.field__label {
+  font-weight: var(--fw-semibold);
+  color: var(--text-soft);
+}
+
+.field__hint {
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+}
+
+.field__error {
+  font-size: var(--fs-2xs);
+  color: var(--danger-text);
+}
+
+.control,
+.field input,
+.field textarea,
+.field select,
 .resource-form__field input,
 .resource-form__field textarea,
 .resource-form__field select {
@@ -812,12 +837,62 @@
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font: inherit;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
+.control:hover:not(:disabled),
+.field input:hover:not(:disabled),
+.field select:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.control:disabled,
+.field input:disabled,
+.field select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.field textarea,
 .resource-form__field textarea {
   resize: vertical;
   min-height: 96px;
 }
+
+/* A native select keeps its own indicator, which the browser places on the
+   correct side for the document direction. Drawing our own background
+   arrow is what pins it to the left in an RTL page. */
+select.control,
+.field select {
+  padding-inline-end: 2rem;
+}
+
+/* Copy actions read as quiet text, not as another primary button competing
+   with the row's real action. */
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+.copy-button:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface); }
+.copy-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.copy-button[data-state="done"] { border-color: var(--green); color: var(--success-text); }
+.copy-button[data-state="failed"] { border-color: var(--red); color: var(--danger-text); }
 
 .resource-form__hint {
   margin: 0;
@@ -1352,3 +1427,31 @@
     padding: 12px;
   }
 }
+
+/* Member management.
+   A compact table inside its own scroll container: wide enough to be
+   readable, contained so it never stretches the page on a phone. */
+.members-panel { display: grid; gap: var(--space-3); }
+.members-panel .data-table { min-width: 560px; }
+.data-table--compact th,
+.data-table--compact td { padding: 10px 12px; }
+
+.members-panel__who {
+  display: grid;
+  gap: 2px;
+  font-weight: var(--fw-medium);
+  text-align: start;
+}
+.members-panel__who small { color: var(--text-faint); font-weight: var(--fw-medium); }
+
+.members-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.members-panel__target { width: auto; min-width: 9rem; }
+
+/* Scope assignment: a short form, not a page. */
+.scope-panel { display: grid; gap: var(--space-3); }
+.scope-panel__form { display: grid; gap: var(--space-3); max-width: 28rem; }

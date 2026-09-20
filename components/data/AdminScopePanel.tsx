@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Field, Select, TextInput } from "@/components/ui/Field";
 import { api } from "@/lib/api/client";
 import { adminAssignRolesEndpoint, endpoints } from "@/lib/api/endpoints";
 import { isUnauthorizedError } from "@/lib/auth/session-expired";
@@ -116,50 +117,57 @@ export function AdminScopePanel({
   }
 
   return (
-    <section aria-label={dictionary.assignRoles} className="flex flex-col gap-3">
+    <section aria-label={dictionary.assignRoles} className="scope-panel">
       <h4>{dictionary.assignRoles}</h4>
-      <form className="flex flex-col gap-3" onSubmit={submit}>
-        <label className="flex flex-col gap-1">
-          <span>{dictionary.roleCodesHint}</span>
-          <input
-            value={roleCodes}
-            placeholder={dictionary.assignRolesPrompt}
-            onChange={(event) => setRoleCodes(event.target.value)}
-          />
-        </label>
+      <form className="scope-panel__form" onSubmit={submit}>
+        <Field label={dictionary.roleCodesHint} hint={dictionary.assignRolesPrompt} error={error}>
+          {(control) => (
+            <TextInput
+              {...control}
+              value={roleCodes}
+              placeholder={dictionary.assignRolesPrompt}
+              onChange={(event) => setRoleCodes(event.target.value)}
+            />
+          )}
+        </Field>
 
-        <label className="flex flex-col gap-1">
-          <span>{dictionary.yourScope}</span>
-          <select
-            value={scopeType}
-            onChange={(event) => {
-              setScopeType(event.target.value as ScopeType);
-              setTarget("");
-            }}
-          >
-            <option value="organization">{dictionary.scopeOrganization}</option>
-            <option value="class">{dictionary.scopeClass}</option>
-            <option value="global">{dictionary.scopeGlobal}</option>
-          </select>
-        </label>
+        <Field label={dictionary.yourScope}>
+          {(control) => (
+            <Select
+              {...control}
+              value={scopeType}
+              onChange={(event) => {
+                setScopeType(event.target.value as ScopeType);
+                setTarget("");
+              }}
+            >
+              <option value="organization">{dictionary.scopeOrganization}</option>
+              <option value="class">{dictionary.scopeClass}</option>
+              <option value="global">{dictionary.scopeGlobal}</option>
+            </Select>
+          )}
+        </Field>
 
         {scopeType === "global" ? null : (
-          <label className="flex flex-col gap-1">
-            <span>
-              {scopeType === "class" ? dictionary.colClass : dictionary.colOrganization}
-            </span>
-            <select value={target} onChange={(event) => setTarget(event.target.value)}>
-              <option value="">—</option>
-              {targets.map((option) => (
-                <option key={option.public_id} value={option.public_id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Field
+            label={scopeType === "class" ? dictionary.colClass : dictionary.colOrganization}
+          >
+            {(control) => (
+              <Select
+                {...control}
+                value={target}
+                onChange={(event) => setTarget(event.target.value)}
+              >
+                <option value="">—</option>
+                {targets.map((option) => (
+                  <option key={option.public_id} value={option.public_id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
         )}
-
-        {error ? <p role="alert">{error}</p> : null}
         <div>
           <Button type="submit" disabled={busy}>
             {dictionary.assignRoles}

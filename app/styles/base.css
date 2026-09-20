@@ -35,7 +35,7 @@ svg { width: 20px; height: 20px; flex: none; }
 
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--purple) 70%, white);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   box-shadow: var(--shadow-focus);
 }
