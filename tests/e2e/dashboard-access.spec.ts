@@ -82,4 +82,34 @@ test.describe("Dashboard backend-authorized access", () => {
     await page.goto("/ar/organizations");
     await expect(page.getByRole("heading", { name: "غير مصرح بالوصول" })).toBeVisible();
   });
+
+  test("organization surfaces remain RTL-safe at compact phone and tablet widths", async ({ browser }) => {
+    for (const { name, viewport, isMobile } of [
+      { name: "phone", viewport: { width: 390, height: 844 }, isMobile: true },
+      { name: "tablet", viewport: { width: 768, height: 1024 }, isMobile: false },
+    ]) {
+      const context = await browser.newContext({ locale: "ar-SA", viewport, isMobile });
+      const page = await context.newPage();
+
+      try {
+        await signIn(page, managerEmail!, managerPassword!);
+        await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+        await expect(page.getByRole("heading", { name: "مدرسة الاختبار المحلية" })).toBeVisible();
+
+        for (const route of ["/ar", "/ar/classes"]) {
+          await page.goto(route);
+          await expect(page.locator("main"), `${name}: ${route}`).toBeVisible();
+          const dimensions = await page.evaluate(() => ({
+            clientWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+          }));
+          expect(dimensions.scrollWidth, `${name}: ${route}`).toBeLessThanOrEqual(
+            dimensions.clientWidth + 1,
+          );
+        }
+      } finally {
+        await context.close();
+      }
+    }
+  });
 });
