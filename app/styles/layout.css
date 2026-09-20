@@ -31,12 +31,12 @@
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-7) var(--space-7) var(--space-10);
+  padding: var(--gutter) var(--gutter) var(--space-10);
   flex: 1;
 }
 
 .dashboard-footer {
-  padding: var(--space-4) var(--space-7) var(--space-6);
+  padding: var(--space-4) var(--gutter) var(--space-6);
   color: var(--text-faint);
   text-align: center;
   font-size: var(--fs-2xs);
@@ -113,8 +113,8 @@
   --sb-link-focus-bg: rgba(255, 255, 255, 0.1);
   --sb-active-bg: var(--gradient-brand-soft);
   --sb-active-color: #fff;
-  --sb-active-border: rgba(255, 255, 255, 0.08);
-  --sb-active-shadow: 0 8px 22px rgba(75, 45, 185, 0.28);
+  --sb-active-border: rgba(232, 160, 37, 0.24);
+  --sb-active-shadow: 0 8px 22px rgba(201, 135, 27, 0.22);
   --sb-icon-bg: rgba(255, 255, 255, 0.06);
   --sb-icon-border: rgba(255, 255, 255, 0.05);
   --sb-icon-hover-bg: rgba(255, 255, 255, 0.1);
@@ -841,15 +841,13 @@
   flex-shrink: 0;
 }
 
-/* Responsive layout */
-@media (max-width: 1380px) {
-  .page-content { padding-inline: var(--space-6); }
-}
-
+/* Responsive layout
+   The page gutter is fluid (see --gutter) and needs no breakpoint of its
+   own. What remains here is structural: chrome that changes shape, not
+   spacing that changes size. */
 @media (max-width: 1100px) {
   :root { --sidebar-width: 256px; }
-  .page-content { padding: var(--space-6) var(--space-5) var(--space-8); }
-  .topbar { padding: 0 var(--space-5); }
+  .topbar { padding: 0 var(--gutter-tight); }
 }
 
 @media (max-width: 820px) {
@@ -906,7 +904,6 @@
   }
   .topbar__identity-text { display: none; }
   .topbar__user { background: transparent; border-color: transparent; box-shadow: none; padding: 0; }
-  .page-content { padding: var(--space-5) var(--space-4) var(--space-8); }
 }
 
 @media (max-width: 560px) {
