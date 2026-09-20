@@ -8,4 +8,6 @@ out
 npm-debug.log*
 .DS_Store
 coverage
+/playwright-report
+/test-results
 *.tsbuildinfo

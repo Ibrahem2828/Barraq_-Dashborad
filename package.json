@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "validate": "node scripts/validate-dashboard.cjs",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "22.15.30",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
