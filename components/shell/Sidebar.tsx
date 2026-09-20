@@ -5,23 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { navigation, type NavItem } from "@/lib/navigation";
+import { navigation, navigationGroups, type NavItem } from "@/lib/navigation";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/types/api";
 import { useAdmin } from "@/components/providers/AdminProvider";
 
 /** Presentation-only grouping — routes, permissions, and items stay unchanged. */
-const navGroups: Array<{ id: string; labelKey: keyof Dictionary; keys: Array<NavItem["key"]> }> = [
-  { id: "home", labelKey: "navHome", keys: ["overview"] },
-  { id: "accounts", labelKey: "navAccounts", keys: ["users", "admins"] },
-  { id: "access", labelKey: "navAccess", keys: ["roles"] },
-  { id: "content", labelKey: "navContent", keys: ["education", "sources"] },
-  { id: "learning", labelKey: "navLearning", keys: ["studyPlans", "quizzes"] },
-  { id: "ai", labelKey: "navAi", keys: ["aiJobs", "aiFeedback", "aiResults"] },
-  { id: "ops", labelKey: "navOps", keys: ["subscriptions", "support", "auditLogs"] },
-  { id: "system", labelKey: "navSystem", keys: ["system"] }
-];
-
 const MOBILE_SHELL_MQ = "(max-width: 820px)";
 
 export function Sidebar({
@@ -88,7 +77,7 @@ export function Sidebar({
         </div>
 
         <nav className="sidebar__nav" aria-label={dictionary.mainNav}>
-          {navGroups.map((group) => {
+          {navigationGroups.map((group) => {
             const items = group.keys.map((key) => visibleByKey.get(key)).filter(Boolean) as NavItem[];
             if (!items.length) return null;
 

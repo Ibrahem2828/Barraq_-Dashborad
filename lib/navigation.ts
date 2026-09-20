@@ -41,6 +41,36 @@ export const navigation: NavItem[] = [
   { key: "system", href: "/system", icon: "health", permission: "system.health", section: "system" }
 ];
 
+/**
+ * Sidebar grouping.
+ *
+ * Lives here rather than in the Sidebar because an item present in
+ * `navigation` but absent from every group is never rendered -- the
+ * sidebar looks items up *by group*, so the omission is silent. That is
+ * how the entire organization section shipped unreachable while its
+ * permissions, sections, routes and pages all existed. `navigationGroups`
+ * and `navigation` are now one file and one test apart.
+ */
+export const navigationGroups: Array<{
+  id: string;
+  labelKey: "navHome" | "navAccounts" | "navOrganizations" | "navAccess" | "navContent" | "navLearning" | "navAi" | "navOps" | "navSystem";
+  keys: Array<NavItem["key"]>;
+}> = [
+  { id: "home", labelKey: "navHome", keys: ["overview"] },
+  { id: "accounts", labelKey: "navAccounts", keys: ["users", "admins"] },
+  {
+    id: "organizations",
+    labelKey: "navOrganizations",
+    keys: ["organizations", "classes", "supervisors", "invitations", "joinRequests"]
+  },
+  { id: "access", labelKey: "navAccess", keys: ["roles"] },
+  { id: "content", labelKey: "navContent", keys: ["education", "sources"] },
+  { id: "learning", labelKey: "navLearning", keys: ["studyPlans", "quizzes"] },
+  { id: "ai", labelKey: "navAi", keys: ["aiJobs", "aiFeedback", "aiResults"] },
+  { id: "ops", labelKey: "navOps", keys: ["subscriptions", "support", "auditLogs"] },
+  { id: "system", labelKey: "navSystem", keys: ["system"] }
+];
+
 /** Resolve the navigation access rule for a dashboard pathname. */
 export function matchNavItem(pathname: string, locale: string): NavItem | undefined {
   const base = `/${locale}`;
