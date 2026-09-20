@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import {
   ResourceFormModal,
   valuesToPayload,
@@ -158,6 +159,7 @@ export function ResourcePage({
   defaultOrdering = "-created_at",
   pageSize = 20,
   mutationToasts,
+  emptyState,
   /** Opt-in: render card/list at ≤768px using columns marked with `mobile`. */
   mobileCards = false
 }: {
@@ -182,6 +184,12 @@ export function ResourcePage({
   pageSize?: number;
   /** When set, create/update/delete show toast feedback instead of inline API errors. */
   mutationToasts?: MutationToastConfig;
+  /**
+   * What an empty list means *here*. "No data" is true of every resource
+   * and useful for none: a manager with no classes yet and a filter that
+   * matched nothing need different sentences and different next steps.
+   */
+  emptyState?: { title: string; description: string };
   mobileCards?: boolean;
 }) {
   const dictionary = useDictionary();
@@ -200,6 +208,10 @@ export function ResourcePage({
   const [formError, setFormError] = useState<string | null>(null);
   const [compose, setCompose] = useState<{ action: RowAction; row: AnyRecord } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // An empty result under a search or filter means something different from
+  // an empty resource, and deserves different words.
+  const filtered = Boolean(search) || Object.values(filterValues).some(Boolean);
 
   const query = useMemo(
     () => ({ search, ordering, page, page_size: pageSize, ...filterValues }),
@@ -473,11 +485,24 @@ export function ResourcePage({
           </div>
         </form>
         {loading ? (
-          <LoadingState />
+          // Shaped like the table it replaces: no jump when the rows land,
+          // and the reader already knows where to look.
+          <TableSkeleton columns={columns.length + 1} rows={Math.min(pageSize, 6)} label={dictionary.loading} />
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : data.results.length === 0 ? (
-          <EmptyState />
+          <EmptyState
+            title={filtered ? dictionary.emptyTitle : emptyState?.title}
+            description={filtered ? dictionary.emptyDescription : emptyState?.description}
+            // The create action is offered only when the list is genuinely
+            // empty. Under an active filter the fix is to clear the filter,
+            // not to add a record the operator may already have.
+            action={
+              !filtered && createConfig
+                ? { label: createConfig.title, onClick: () => setCreateOpen(true) }
+                : undefined
+            }
+          />
         ) : (
           <>
             <div className="table-wrap resource-table-wrap">

@@ -131,6 +131,10 @@ export default function InvitationsPage() {
         },
         { key: "created_at", label: dictionary.colCreated, type: "date" }
       ]}
+      emptyState={{
+        title: dictionary.emptyInvitations,
+        description: dictionary.emptyInvitationsDesc
+      }}
       mobileCards
     />
   );

@@ -64,6 +64,10 @@ export default function JoinRequestsPage() {
         { key: "created_at", label: dictionary.colCreated, type: "date" },
         { key: "decided_at", label: dictionary.colUpdated, type: "date" }
       ]}
+      emptyState={{
+        title: dictionary.emptyJoinRequests,
+        description: dictionary.emptyJoinRequestsDesc
+      }}
       mobileCards
     />
   );

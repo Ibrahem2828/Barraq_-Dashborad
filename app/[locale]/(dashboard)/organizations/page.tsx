@@ -107,6 +107,10 @@ export default function OrganizationsPage() {
         { key: "status", label: dictionary.status, type: "status", mobile: true },
         { key: "created_at", label: dictionary.colCreated, type: "date" }
       ]}
+      emptyState={{
+        title: dictionary.emptyOrganizations,
+        description: dictionary.emptyOrganizationsDesc
+      }}
       mobileCards
     />
   );

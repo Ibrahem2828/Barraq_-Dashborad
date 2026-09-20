@@ -119,6 +119,10 @@ export default function SupervisorsPage() {
         },
         { key: "is_active", label: dictionary.status, type: "status" }
       ]}
+      emptyState={{
+        title: dictionary.emptySupervisors,
+        description: dictionary.emptySupervisorsDesc
+      }}
       mobileCards
     />
   );

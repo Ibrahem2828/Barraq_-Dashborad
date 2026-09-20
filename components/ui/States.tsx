@@ -15,7 +15,21 @@ export function LoadingState({ size = "md" }: { size?: "sm" | "md" | "lg"; rows?
   );
 }
 
-export function EmptyState({ title, description }: { title?: string; description?: string }) {
+/**
+ * An empty list is a question -- "is this broken, or is there nothing yet?"
+ * -- and the answer differs per resource. Callers supply the copy that says
+ * which, and where possible the action that resolves it, so the screen is a
+ * place to continue from rather than a dead end.
+ */
+export function EmptyState({
+  title,
+  description,
+  action
+}: {
+  title?: string;
+  description?: string;
+  action?: { label: string; onClick: () => void };
+}) {
   const dictionary = useDictionary();
 
   return (
@@ -25,6 +39,11 @@ export function EmptyState({ title, description }: { title?: string; description
       </div>
       <h3>{title ?? dictionary.emptyTitle}</h3>
       <p>{description ?? dictionary.emptyDescription}</p>
+      {action ? (
+        <div className="empty-state__action">
+          <Button onClick={action.onClick}>{action.label}</Button>
+        </div>
+      ) : null}
     </div>
   );
 }

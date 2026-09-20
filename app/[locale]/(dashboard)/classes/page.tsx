@@ -136,6 +136,10 @@ export default function ClassesPage() {
         { key: "status", label: dictionary.status, type: "status", mobile: true },
         { key: "created_at", label: dictionary.colCreated, type: "date" }
       ]}
+      emptyState={{
+        title: dictionary.emptyClasses,
+        description: dictionary.emptyClassesDesc
+      }}
       mobileCards
     />
   );
