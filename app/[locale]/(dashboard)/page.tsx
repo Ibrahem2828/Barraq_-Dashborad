@@ -1,5 +1,6 @@
 "use client";
 
+import { ClassOverview } from "@/components/dashboard/ClassOverview";
 import { OrganizationOverview } from "@/components/dashboard/OrganizationOverview";
 import { OverviewDashboard } from "@/components/dashboard/OverviewDashboard";
 import { useAdmin } from "@/components/providers/AdminProvider";
@@ -21,9 +22,12 @@ export default function DashboardPage() {
   if (overview.kind === "organization") {
     return <OrganizationOverview organizations={overview.organizations} />;
   }
+  if (overview.kind === "classes") return <ClassOverview classes={overview.classes} />;
 
-  // A class-only supervisor, or an account whose scope has not been granted
-  // yet. Neither has an organization to summarise, and inventing numbers
-  // for them would be worse than saying so plainly.
-  return <EmptyState title={dictionary.noScope} description={dictionary.emptySupervisorsDesc} />;
+  // No scope at all. Saying so beats inventing numbers for an account the
+  // backend grants nothing to.
+  // Not "no scope" -- this account may well have one. It has no summary
+  // it is permitted to read, which is a different thing, and telling it
+  // to "add an admin account" described a task it cannot perform.
+  return <EmptyState title={dictionary.noOverviewTitle} description={dictionary.noOverviewDesc} />;
 }

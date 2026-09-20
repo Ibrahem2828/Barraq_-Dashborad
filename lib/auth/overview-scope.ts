@@ -3,6 +3,7 @@ import type { AdminMe, AdminScope } from "@/types/api";
 export type OverviewKind =
   | { kind: "platform" }
   | { kind: "organization"; organizations: AdminScope[] }
+  | { kind: "classes"; classes: AdminScope[] }
   | { kind: "none" };
 
 /**
@@ -17,10 +18,17 @@ export type OverviewKind =
  * describes the shape of every tenant it covers -- so routing everyone to
  * it turned that correct refusal into a load failure on the home page.
  */
-export function selectOverview(admin: Pick<AdminMe, "is_superuser" | "scopes"> | null): OverviewKind {
+export function selectOverview(
+  admin: Pick<AdminMe, "is_superuser" | "scopes" | "permissions"> | null,
+): OverviewKind {
   if (!admin) return { kind: "none" };
 
   const scopes = admin.scopes ?? [];
+  // Scope says which tenant; permission says whether this account may
+  // read the summary at all. Offering a view the backend will refuse
+  // produces a blank page, which is how a custom role with an
+  // organization scope but no organizations.view landed on nothing.
+  const can = (code: string) => (admin.permissions ?? []).includes(code);
 
   // is_superuser is reach in itself and does not depend on a scope row;
   // an explicit global grant is the other way to hold the whole platform.
@@ -37,7 +45,16 @@ export function selectOverview(admin: Pick<AdminMe, "is_superuser" | "scopes"> |
   const organizations = scopes.filter(
     (scope) => scope.type === "organization" && Boolean(scope.organization),
   );
-  if (organizations.length > 0) return { kind: "organization", organizations };
+  if (organizations.length > 0 && can("organizations.view")) {
+    return { kind: "organization", organizations };
+  }
+
+  // A class supervisor has no organization total they may read, but they do
+  // have classes -- which is the whole of their job. Sending them to an
+  // empty state that says "add an admin account" was both useless and
+  // wrong: it described a task they cannot perform.
+  const classes = scopes.filter((scope) => scope.type === "class" && Boolean(scope.classroom));
+  if (classes.length > 0 && can("classes.view")) return { kind: "classes", classes };
 
   // No scope at all, which the backend reads as no access. Saying so beats
   // inventing numbers for an account that can see none.
