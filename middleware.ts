@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LOCALE_COOKIE } from "@/lib/auth/cookies";
+import { LOCALE_COOKIE, LOCALE_HEADER } from "@/lib/auth/cookies";
 import { clearAuthCookiesOn, resolveEdgeSession } from "@/lib/auth/edge-session";
 
 const locales = ["ar", "en"] as const;
@@ -57,7 +57,15 @@ export async function middleware(request: NextRequest) {
     return withLocaleCookie(response, locale);
   }
 
-  const response = NextResponse.next();
+  // The root layout sits above [locale] and cannot read the route segment,
+  // so the locale is forwarded as a request header. Without it <html> has
+  // no dir and the whole document lays out left-to-right -- Arabic text
+  // still reads correctly because of bidi, but every logical property
+  // resolves the wrong way round, which is why the sidebar was being
+  // placed by margin-inline-start as if this were an English page.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(LOCALE_HEADER, locale);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (session.authenticated) {
     session.attach?.(response);
   } else if (mayClearCookies) {

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Cairo } from "next/font/google";
 import { ThemeScript } from "@/components/providers/ThemeScript";
+import { LOCALE_HEADER } from "@/lib/auth/cookies";
 import "./globals.css";
 
 const baraqFont = Cairo({
@@ -19,9 +21,18 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, colorScheme: "light dark" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Middleware resolved this already; the root layout is above [locale] and
+  // has no segment of its own to read.
+  const locale = (await headers()).get(LOCALE_HEADER) === "en" ? "en" : "ar";
+
   return (
-    <html lang="ar" className={baraqFont.variable} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      className={baraqFont.variable}
+      suppressHydrationWarning
+    >
       <head>
         <ThemeScript />
       </head>

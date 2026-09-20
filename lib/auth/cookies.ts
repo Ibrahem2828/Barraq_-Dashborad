@@ -9,3 +9,6 @@ export const THEME_COOKIE = "baraq_theme";
 // only prevent stale cookies from lingering longer than the token itself.
 export const ACCESS_COOKIE_MAX_AGE_SECONDS = 60 * 30;
 export const REFRESH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
+
+/** Set by middleware so the root layout can render <html dir> server-side. */
+export const LOCALE_HEADER = "x-baraq-locale";
