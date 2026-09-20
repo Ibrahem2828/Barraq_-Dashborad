@@ -3,7 +3,8 @@
 import { ResourcePage } from "@/components/data/ResourcePage";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { endpoints, invitationRevokeEndpoint } from "@/lib/api/endpoints";
-import { useDictionary } from "@/lib/i18n/useDictionary";
+import { buildJoinLink } from "@/lib/api/join-link";
+import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
 import type { AnyRecord } from "@/types/api";
 
 function isExpired(row: AnyRecord): boolean {
@@ -34,7 +35,7 @@ function isUsable(row: AnyRecord): boolean {
  */
 export default function InvitationsPage() {
   const dictionary = useDictionary();
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const locale = useLocale();
 
   return (
     <ResourcePage
@@ -80,15 +81,19 @@ export default function InvitationsPage() {
         {
           key: "token",
           label: dictionary.copyLink,
-          render: (row) =>
-            isUsable(row) && row.token ? (
-              <CopyButton
-                value={`${origin}/ar/join?token=${String(row.token)}`}
-                label={dictionary.copyLink}
-              />
+          // The join page belongs to the student app, on a different origin,
+          // and in the reader's own locale. When that origin is not
+          // configured no link is offered -- the code below always works,
+          // and a link quietly pointing at the wrong host is worse than
+          // none, because the manager believes they sent something usable.
+          render: (row) => {
+            const href = isUsable(row) ? buildJoinLink(String(row.token ?? ""), locale) : null;
+            return href ? (
+              <CopyButton value={href} label={dictionary.copyLink} />
             ) : (
               <span className="muted">—</span>
-            )
+            );
+          }
         },
         { key: "organization", label: dictionary.colOrganization },
         { key: "classroom", label: dictionary.colClass, mobile: true },
