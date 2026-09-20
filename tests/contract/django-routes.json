@@ -7,6 +7,7 @@
     "/admin/admin-users/",
     "/admin/admin-users/{id}/",
     "/admin/admin-users/{id}/assign-roles/",
+    "/admin/admin-users/{id}/revoke-roles/",
     "/admin/ai-feedback/",
     "/admin/ai-feedback/{id}/",
     "/admin/ai-jobs/",

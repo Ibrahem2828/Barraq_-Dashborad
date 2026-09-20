@@ -38,6 +38,7 @@ const BACKEND_SECTIONS = new Set([
   "organizations",
   "classes",
   "join_requests",
+  "invitations",
 ]);
 
 /** The permission each backend section is gated on, same source. */
@@ -63,6 +64,7 @@ const SECTION_PERMISSION: Record<string, string> = {
   organizations: "organizations.view",
   classes: "classes.view",
   join_requests: "join_requests.view",
+  invitations: "invitations.view",
 };
 
 describe("navigation access rules", () => {

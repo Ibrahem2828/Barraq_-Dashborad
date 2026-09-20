@@ -91,3 +91,19 @@ export function classActionEndpoint(
 export function joinRequestActionEndpoint(publicId: string, action: "approve" | "reject"): string {
   return `${endpoints.admin.joinRequests}${publicId}/${action}/`;
 }
+
+export function classMembersEndpoint(publicId: string): string {
+  return `${endpoints.admin.classes}${publicId}/members/`;
+}
+
+export function classMemberActionEndpoint(publicId: string, action: "remove" | "transfer"): string {
+  return `${endpoints.admin.classes}${publicId}/members/${action}/`;
+}
+
+export function invitationRevokeEndpoint(id: string | number): string {
+  return `${endpoints.admin.invitations}${id}/revoke/`;
+}
+
+export function adminRevokeRolesEndpoint(adminId: string | number): string {
+  return `${endpoints.admin.admins}${adminId}/revoke-roles/`;
+}

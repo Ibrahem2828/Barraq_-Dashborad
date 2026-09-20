@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { ClassMembersPanel } from "@/components/data/ClassMembersPanel";
 import { ResourcePage } from "@/components/data/ResourcePage";
 import { api } from "@/lib/api/client";
 import { classActionEndpoint, endpoints } from "@/lib/api/endpoints";
@@ -58,6 +59,7 @@ export default function ClassesPage() {
       description={dictionary.classesDesc}
       endpoint={endpoints.admin.classes}
       hydrateDetail
+      renderDetailExtra={(classroom) => <ClassMembersPanel classroom={classroom} />}
       createConfig={{
         title: dictionary.createClass,
         fields: [

@@ -24,6 +24,8 @@ export const navigation: NavItem[] = [
   { key: "organizations", href: "/organizations", icon: "shield", permission: "organizations.view", section: "organizations" },
   { key: "classes", href: "/classes", icon: "book", permission: "classes.view", section: "classes" },
   { key: "joinRequests", href: "/join-requests", icon: "users", permission: "join_requests.view", section: "join_requests" },
+  { key: "supervisors", href: "/supervisors", icon: "shield", permission: "admins.view", section: "admins" },
+  { key: "invitations", href: "/invitations", icon: "file", permission: "invitations.view", section: "invitations" },
   { key: "admins", href: "/admins", icon: "shield", permission: "admins.view", section: "admins" },
   { key: "roles", href: "/roles", icon: "shield", permission: "roles.view", section: "roles" },
   { key: "education", href: "/education", icon: "book", section: "subjects" },
