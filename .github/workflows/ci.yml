@@ -57,3 +57,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      # `headers()` is resolved during the build and baked into
+      # routes-manifest.json, so the built artifact is the only place the
+      # CSP and HSTS the app really sends can be checked.
+      - name: Verify shipped security headers
+        run: npm run check:headers

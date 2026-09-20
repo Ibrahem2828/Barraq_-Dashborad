@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "check:headers": "node scripts/check-security-headers.mjs",
     "start": "node scripts/run-start.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
