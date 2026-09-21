@@ -574,9 +574,9 @@ const ar = {
 } as const;
 
 const en: Record<keyof typeof ar, string> = {
-  appName: "Baraq Control Center",
+  appName: "برّاق Control Center",
   controlCenter: "Control Center",
-  brandName: "Baraq",
+  brandName: "برّاق",
   brandTagline: "Smart learning platform",
   login: "Sign in",
   email: "Email address",
@@ -587,7 +587,7 @@ const en: Record<keyof typeof ar, string> = {
   loginSuccess: "Signed in successfully",
   welcomeBack: "Welcome back",
   loginFormHint: "Use your authorized admin account to access the control center.",
-  loginEyebrow: "BARAQ CONTROL CENTER",
+  loginEyebrow: "برّاق CONTROL CENTER",
   loginHeadlineLine1: "Every platform detail",
   loginHeadlineLine2: "in one command center.",
   loginVisualDesc:
@@ -751,7 +751,7 @@ const en: Record<keyof typeof ar, string> = {
   quickTools: "Quick tools",
   switchToEnglish: "Switch to English",
   switchToArabic: "Switch to Arabic",
-  adminFallback: "Baraq Admin",
+  adminFallback: "برّاق Admin",
   sidebarNav: "Sidebar",
   mainNav: "Main navigation",
   navHome: "Home",
@@ -763,7 +763,7 @@ const en: Record<keyof typeof ar, string> = {
   navAi: "AI",
   navOps: "Operations",
   navSystem: "System",
-  footerBrand: "Baraq",
+  footerBrand: "برّاق",
   footerVersion: "Version",
   usersTitle: "User management",
   usersDesc: "Track student accounts, activation status, activity and subscriptions",
@@ -939,7 +939,7 @@ const en: Record<keyof typeof ar, string> = {
   pending: "Pending",
   interactionsTab: "Interactions",
   interactionsTitle: "Character interactions",
-  interactionsDesc: "Student interactions with Baraq characters and result status",
+  interactionsDesc: "Student interactions with برّاق characters and result status",
   colAction: "Action",
   colCollection: "Collection",
   cancelSubscription: "Cancel subscription",
