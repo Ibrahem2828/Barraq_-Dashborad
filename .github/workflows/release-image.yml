@@ -1,0 +1,71 @@
+name: Release image
+
+# Builds the production dashboard image off the VPS (building Next.js there starved the
+# live services on 2026-09-25). Triggered only by a tag that names the exact commit
+# to release: dashboard-image-<40-char SHA>. The image is built from that commit alone,
+# for the server's architecture, pushed to GHCR, and its digest is recorded so the
+# server deploys exactly this image by digest.
+on:
+  push:
+    tags: ["dashboard-image-*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Resolve the commit named by the tag
+        id: target
+        run: |
+          sha="${GITHUB_REF_NAME#dashboard-image-}"
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Tag must be dashboard-image-<40-character commit SHA>"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/baraq-dashboard" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify an exact, clean tree
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ steps.target.outputs.sha }}"
+          test -z "$(git status --porcelain)"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (linux/amd64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.target.outputs.image }}:${{ steps.target.outputs.sha }}
+          build-args: |
+            NEXT_PUBLIC_DASHBOARD_VERSION=${{ steps.target.outputs.short }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.target.outputs.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Record the digest
+        run: |
+          ref="${{ steps.target.outputs.image }}@${{ steps.build.outputs.digest }}"
+          echo "::notice title=Image digest::$ref"
+          echo "Image: \`$ref\` (commit ${{ steps.target.outputs.sha }})" >> "$GITHUB_STEP_SUMMARY"
