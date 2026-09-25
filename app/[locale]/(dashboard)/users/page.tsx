@@ -23,7 +23,7 @@ export default function UsersPage() {
           const isAdminUser = 
             response.data?.is_superuser ||
             (Array.isArray(response.data?.roles) && response.data.roles.some((r: AnyRecord) => r.code === "admin"));
-          setIsAdmin(isAdminUser);
+          setIsAdmin(Boolean(isAdminUser));
         }
       })
       .catch(() => {

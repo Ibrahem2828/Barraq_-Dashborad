@@ -32,8 +32,8 @@ export default function OrganizationsPage() {
           const isAdminUser = 
             (Array.isArray(response.data?.roles) && response.data.roles.some((r: AnyRecord) => r.code === "admin")) ||
             response.data?.is_superuser ||
-            !response.data?.scopes?.some((s: AnyRecord) => s.scope_type !== "global");
-          setIsAdmin(isAdminUser);
+            !(Array.isArray(response.data?.scopes) ? response.data.scopes : []).some((s: AnyRecord) => s.scope_type !== "global");
+          setIsAdmin(Boolean(isAdminUser));
         }
       })
       .catch(() => {
