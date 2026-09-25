@@ -113,8 +113,8 @@
   --sb-link-focus-bg: rgba(255, 255, 255, 0.1);
   --sb-active-bg: var(--gradient-brand-soft);
   --sb-active-color: #fff;
-  --sb-active-border: rgba(232, 160, 37, 0.24);
-  --sb-active-shadow: 0 8px 22px rgba(201, 135, 27, 0.22);
+  --sb-active-border: rgba(255, 255, 255, 0.08);
+  --sb-active-shadow: 0 8px 22px rgba(75, 45, 185, 0.28);
   --sb-icon-bg: rgba(255, 255, 255, 0.06);
   --sb-icon-border: rgba(255, 255, 255, 0.05);
   --sb-icon-hover-bg: rgba(255, 255, 255, 0.1);

@@ -61,6 +61,8 @@ export default function AdminsPage() {
           const payload = valuesToPayload(values, createFields.filter((field) => field.key !== "role_codes"));
           const role_codes = parseRoleCodes(String(values.role_codes ?? ""));
           if (role_codes.length) payload.role_codes = role_codes;
+          // API requires at least one scope
+          payload.scopes = [{ scope_type: "global" }];
           return payload;
         }
       }}

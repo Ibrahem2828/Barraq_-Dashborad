@@ -1,12 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { ResourcePage } from "@/components/data/ResourcePage";
 import type { FormField } from "@/components/data/ResourceFormModal";
 import { endpoints, userActionEndpoint } from "@/lib/api/endpoints";
 import { useDictionary } from "@/lib/i18n/useDictionary";
+import { api } from "@/lib/api/client";
+import type { AnyRecord } from "@/types/api";
 
 export default function UsersPage() {
   const dictionary = useDictionary();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<AnyRecord>(endpoints.admin.me)
+      .then((response) => {
+        if (!cancelled) {
+          // Check if user is platform admin
+          const isAdminUser = 
+            response.data?.is_superuser ||
+            (Array.isArray(response.data?.roles) && response.data.roles.some((r: AnyRecord) => r.code === "admin"));
+          setIsAdmin(isAdminUser);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const createFields: FormField[] = [
+    { key: "email", label: dictionary.email, type: "email", required: true },
+    { key: "full_name", label: dictionary.colName, required: true },
+    { key: "phone_number", label: dictionary.phoneNumber },
+    { key: "password", label: dictionary.password, type: "password", required: true, minLength: 8 }
+  ];
 
   const editFields: FormField[] = [
     { key: "full_name", label: dictionary.colName, required: true },
@@ -29,6 +62,10 @@ export default function UsersPage() {
           ]
         }
       ]}
+      createConfig={isAdmin ? {
+        title: dictionary.createRecord,
+        fields: createFields
+      } : undefined}
       editConfig={{
         title: dictionary.editUser,
         fields: editFields,
@@ -39,6 +76,7 @@ export default function UsersPage() {
         })
       }}
       mutationToasts={{
+        createSuccess: dictionary.userCreated,
         updateSuccess: dictionary.userUpdated
       }}
       rowActions={[

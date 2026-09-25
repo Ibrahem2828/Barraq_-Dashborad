@@ -3,7 +3,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api/client";
 import { detailEndpoint } from "@/lib/api/endpoints";
-import { recordKey } from "@/lib/api/record-key";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -311,9 +310,8 @@ export function ResourcePage({
     setFormError(null);
     try {
       const body = editConfig.toBody?.(values, selected) ?? valuesToPayload(values, editConfig.fields);
-      const key = recordKey(selected);
-      if (!key) throw new Error(dictionary.actionFailed);
-      const target = detailEndpoint(endpoint, key);
+      const id = selected.public_id ?? selected.id;
+      const target = detailEndpoint(endpoint, String(id));
       if (editConfig.method === "PUT") await api.put(target, body);
       else await api.patch(target, body);
       if (mutationToasts?.updateSuccess) toast.success(mutationToasts.updateSuccess);
@@ -350,11 +348,11 @@ export function ResourcePage({
 
   async function refreshDetail(row: AnyRecord = selected as AnyRecord) {
     if (!row) return;
-    const id = recordKey(row);
-    if (!id) return;
+    const id = row.id ?? row.public_id;
+    if (id === undefined || id === null) return;
     setDetailLoading(true);
     try {
-      const response = await api.get<AnyRecord>(detailEndpoint(endpoint, id));
+      const response = await api.get<AnyRecord>(detailEndpoint(endpoint, String(id)));
       setSelected(response.data);
       setActionError(null);
     } catch (reason) {
@@ -380,9 +378,7 @@ export function ResourcePage({
     setActionBusy("delete");
     setActionError(null);
     try {
-      const key = recordKey(selected);
-      if (!key) throw new Error(dictionary.actionFailed);
-      await api.delete(detailEndpoint(endpoint, key));
+      await api.delete(detailEndpoint(endpoint, String(selected.id)));
       if (mutationToasts?.deleteSuccess) toast.success(mutationToasts.deleteSuccess);
       setSelected(null);
       reload();

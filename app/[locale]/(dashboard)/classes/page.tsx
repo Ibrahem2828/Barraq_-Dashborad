@@ -35,7 +35,11 @@ export default function ClassesPage() {
     api
       .get<Paginated<OrganizationOption>>(endpoints.admin.organizations, { page_size: 100 })
       .then((response) => {
-        if (!cancelled) setOrganizations(response.data?.results ?? []);
+        if (!cancelled) {
+          // API wrapper normalizes response, so response.data is the array
+          const data = Array.isArray(response.data) ? response.data : response.data?.results ?? [];
+          setOrganizations(data);
+        }
       })
       .catch(() => {
         // A manager without organizations.view still reaches this page via

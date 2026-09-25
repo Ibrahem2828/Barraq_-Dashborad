@@ -1,12 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { TabbedResources } from "@/components/data/TabbedResources";
 import type { FormField } from "@/components/data/ResourceFormModal";
 import { endpoints } from "@/lib/api/endpoints";
 import { useDictionary } from "@/lib/i18n/useDictionary";
+import { api } from "@/lib/api/client";
+import type { AnyRecord } from "@/types/api";
 
 export default function EducationPage() {
   const dictionary = useDictionary();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<AnyRecord>(endpoints.admin.me)
+      .then((response) => {
+        if (!cancelled) {
+          // Check if user is platform admin
+          const isAdminUser = 
+            (Array.isArray(response.data?.roles) && response.data.roles.some((r: AnyRecord) => r.code === "admin")) ||
+            response.data?.is_superuser ||
+            !response.data?.scopes?.some((s: AnyRecord) => s.scope_type !== "global");
+          setIsAdmin(isAdminUser);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const stageFields: FormField[] = [
     { key: "name", label: dictionary.colName, required: true },
@@ -32,8 +59,8 @@ export default function EducationPage() {
           title: dictionary.stagesTitle,
           description: dictionary.stagesDesc,
           endpoint: endpoints.admin.educationStages,
-          createConfig: { title: dictionary.createStage, fields: stageFields },
-          editConfig: {
+          createConfig: isAdmin ? { title: dictionary.createStage, fields: stageFields } : undefined,
+          editConfig: isAdmin ? {
             title: dictionary.editStage,
             method: "PUT",
             fields: stageFields,
@@ -43,8 +70,8 @@ export default function EducationPage() {
               order: String(row.order ?? ""),
               is_active: Boolean(row.is_active)
             })
-          },
-          allowDelete: true,
+          } : undefined,
+          allowDelete: isAdmin,
           deleteConfirm: dictionary.deleteStageConfirm,
           mutationToasts: {
             createSuccess: dictionary.stageCreated,
@@ -71,8 +98,8 @@ export default function EducationPage() {
           title: dictionary.subjectsTitle,
           description: dictionary.subjectsDesc,
           endpoint: endpoints.admin.subjects,
-          createConfig: { title: dictionary.createSubject, fields: subjectFields },
-          editConfig: {
+          createConfig: isAdmin ? { title: dictionary.createSubject, fields: subjectFields } : undefined,
+          editConfig: isAdmin ? {
             title: dictionary.editSubject,
             method: "PUT",
             fields: subjectFields,
@@ -83,8 +110,8 @@ export default function EducationPage() {
               description: String(row.description ?? ""),
               is_active: Boolean(row.is_active)
             })
-          },
-          allowDelete: true,
+          } : undefined,
+          allowDelete: isAdmin,
           deleteConfirm: dictionary.deleteSubjectConfirm,
           mutationToasts: {
             createSuccess: dictionary.subjectCreated,

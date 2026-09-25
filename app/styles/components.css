@@ -26,11 +26,11 @@
 .button--primary {
   background: var(--gradient-brand);
   color: var(--on-brand);
-  box-shadow: var(--shadow-brand);
+  box-shadow: var(--shadow-purple);
 }
 .button--primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 14px 32px rgba(201, 135, 27, 0.32);
+  box-shadow: 0 14px 32px rgba(123, 46, 232, 0.3);
 }
 
 .button--secondary {

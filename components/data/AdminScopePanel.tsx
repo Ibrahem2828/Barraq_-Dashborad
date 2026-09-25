@@ -53,24 +53,35 @@ export function AdminScopePanel({
   const [organizations, setOrganizations] = useState<Option[]>([]);
   const [classes, setClasses] = useState<Option[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     Promise.all([
-      api.get<{ results?: Option[] }>(endpoints.admin.organizations, { page_size: 100 }),
-      api.get<{ results?: Option[] }>(endpoints.admin.classes, { page_size: 200 })
+      api.get<{ data?: Option[]; results?: Option[] }>(endpoints.admin.organizations, { page_size: 100 }),
+      api.get<{ data?: Option[]; results?: Option[] }>(endpoints.admin.classes, { page_size: 200 })
     ])
       .then(([orgs, cls]) => {
         if (cancelled) return;
-        setOrganizations(orgs.data?.results ?? []);
-        setClasses(cls.data?.results ?? []);
+        // API wrapper normalizes responses to ApiEnvelope<T>
+        // So orgs.data is already the array of organizations
+        const orgsData = Array.isArray(orgs.data) ? orgs.data : [];
+        const clsData = Array.isArray(cls.data) ? cls.data : [];
+        console.log("Organizations:", orgsData.length, "Classes:", clsData.length);
+        setOrganizations(orgsData);
+        setClasses(clsData);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          console.error("API Error:", error);
           setOrganizations([]);
           setClasses([]);
         }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -151,19 +162,25 @@ export function AdminScopePanel({
         {scopeType === "global" ? null : (
           <Field
             label={scopeType === "class" ? dictionary.colClass : dictionary.colOrganization}
+            hint={loading ? "جارٍ التحميل..." : `${targets.length} متاح`}
           >
             {(control) => (
               <Select
                 {...control}
                 value={target}
                 onChange={(event) => setTarget(event.target.value)}
+                disabled={loading}
               >
                 <option value="">—</option>
-                {targets.map((option) => (
-                  <option key={option.public_id} value={option.public_id}>
-                    {option.name}
-                  </option>
-                ))}
+                {targets.length > 0 ? (
+                  targets.map((option) => (
+                    <option key={option.public_id} value={option.public_id}>
+                      {option.name}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>لا توجد خيارات</option>
+                )}
               </Select>
             )}
           </Field>

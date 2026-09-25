@@ -68,7 +68,12 @@ export default function SubscriptionsPage() {
             { key: "code", label: dictionary.colCode, mobile: true },
             { key: "name", label: dictionary.colPlanName, mobile: "title" },
             { key: "price", label: dictionary.colPrice, mobile: true },
-            { key: "billing_cycle", label: dictionary.colBillingCycle, type: "status" },
+            {
+              key: "billing_interval",
+              label: dictionary.colBillingCycle,
+              type: "status",
+              render: (row) => String(row.billing_interval ?? row.billing_cycle ?? "—")
+            },
             {
               key: "is_active",
               label: dictionary.status,

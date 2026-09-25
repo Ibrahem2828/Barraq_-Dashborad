@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { ResourcePage } from "@/components/data/ResourcePage";
 import { endpoints, organizationActionEndpoint } from "@/lib/api/endpoints";
 import { useDictionary } from "@/lib/i18n/useDictionary";
+import { api } from "@/lib/api/client";
+import type { AnyRecord } from "@/types/api";
 
 /**
  * The list is whatever the backend returns, unfiltered by this page.
@@ -14,6 +18,34 @@ import { useDictionary } from "@/lib/i18n/useDictionary";
  */
 export default function OrganizationsPage() {
   const dictionary = useDictionary();
+  const [currentUser, setCurrentUser] = useState<AnyRecord | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<AnyRecord>(endpoints.admin.me)
+      .then((response) => {
+        if (!cancelled) {
+          setCurrentUser(response.data);
+          // Check if user is platform admin (has admin role or is_superuser)
+          const isAdminUser = 
+            (Array.isArray(response.data?.roles) && response.data.roles.some((r: AnyRecord) => r.code === "admin")) ||
+            response.data?.is_superuser ||
+            !response.data?.scopes?.some((s: AnyRecord) => s.scope_type !== "global");
+          setIsAdmin(isAdminUser);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCurrentUser(null);
+          setIsAdmin(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <ResourcePage
@@ -21,7 +53,7 @@ export default function OrganizationsPage() {
       description={dictionary.organizationsDesc}
       endpoint={endpoints.admin.organizations}
       hydrateDetail
-      createConfig={{
+      createConfig={isAdmin ? {
         title: dictionary.createOrganization,
         fields: [
           { key: "name", label: dictionary.colName, required: true },
@@ -35,8 +67,8 @@ export default function OrganizationsPage() {
             ]
           }
         ]
-      }}
-      editConfig={{
+      } : undefined}
+      editConfig={isAdmin ? {
         title: dictionary.editOrganization,
         fields: [
           { key: "name", label: dictionary.colName, required: true },
@@ -66,7 +98,7 @@ export default function OrganizationsPage() {
           organization_type: String(row.organization_type ?? "school"),
           status: String(row.status ?? "active")
         })
-      }}
+      } : undefined}
       mutationToasts={{
         createSuccess: dictionary.organizationCreated,
         updateSuccess: dictionary.organizationUpdated
