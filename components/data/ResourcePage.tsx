@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api/client";
 import { detailEndpoint } from "@/lib/api/endpoints";
 import { recordKey } from "@/lib/api/record-key";
@@ -69,6 +69,8 @@ export interface FilterConfig {
   key: string;
   label: string;
   options: FilterOption[];
+  /** Label of the empty choice; "all" unless the endpoint applies a default (e.g. "last 30 days"). */
+  emptyLabel?: string;
 }
 
 export interface MutateConfig {
@@ -162,7 +164,11 @@ export function ResourcePage({
   mutationToasts,
   emptyState,
   /** Opt-in: render card/list at ≤768px using columns marked with `mobile`. */
-  mobileCards = false
+  mobileCards = false,
+  orderingOptions,
+  onFiltersChange,
+  summary,
+  hideDetailFields = false
 }: {
   title: string;
   description: string;
@@ -192,6 +198,14 @@ export function ResourcePage({
    */
   emptyState?: { title: string; description: string };
   mobileCards?: boolean;
+  /** Sort choices for endpoints that do not order by created_at/id. */
+  orderingOptions?: FilterOption[];
+  /** Reports the active filter values, so a page can keep companion panels (summaries) in step. */
+  onFiltersChange?: (values: Record<string, string>) => void;
+  /** Panels between the page header and the table (e.g. metric cards). */
+  summary?: ReactNode;
+  /** The detail panel (renderDetailExtra) presents the record itself; skip the raw field list. */
+  hideDetailFields?: boolean;
 }) {
   const dictionary = useDictionary();
   const locale = useLocale();
@@ -219,6 +233,10 @@ export function ResourcePage({
     [search, ordering, page, pageSize, filterValues]
   );
   const { data, loading, error, reload } = useResource(endpoint, query);
+
+  useEffect(() => {
+    onFiltersChange?.(filterValues);
+  }, [filterValues, onFiltersChange]);
   const pages = Math.max(1, Math.ceil(data.count / pageSize));
 
   const mobileTitleColumn = useMemo(
@@ -426,6 +444,7 @@ export function ResourcePage({
           </>
         }
       />
+      {summary}
       <Card className={showMobileCards ? "resource-panel resource-panel--cards" : "resource-panel"}>
         {actionError ? (
           <div className="inline-error" role="alert">
@@ -462,7 +481,7 @@ export function ResourcePage({
                     setFilterValues((current) => ({ ...current, [filter.key]: event.target.value }));
                   }}
                 >
-                  <option value="">{dictionary.all}</option>
+                  <option value="">{filter.emptyLabel ?? dictionary.all}</option>
                   {filter.options.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -481,10 +500,20 @@ export function ResourcePage({
                   setOrdering(event.target.value);
                 }}
               >
-                <option value="-created_at">{dictionary.newest}</option>
-                <option value="created_at">{dictionary.oldest}</option>
-                <option value="id">{dictionary.idAsc}</option>
-                <option value="-id">{dictionary.idDesc}</option>
+                {orderingOptions ? (
+                  orderingOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="-created_at">{dictionary.newest}</option>
+                    <option value="created_at">{dictionary.oldest}</option>
+                    <option value="id">{dictionary.idAsc}</option>
+                    <option value="-id">{dictionary.idDesc}</option>
+                  </>
+                )}
               </select>
             </label>
           </div>
@@ -607,6 +636,7 @@ export function ResourcePage({
         {selected ? (
           <>
             {detailLoading ? <LoadingState /> : null}
+            {hideDetailFields ? null : (
             <dl className="record-details">
               {Object.entries(selected)
                 .filter(([key]) => !detailOmitKeys.includes(key) && key !== "messages")
@@ -630,6 +660,7 @@ export function ResourcePage({
                 </div>
               ))}
             </dl>
+            )}
             {renderDetailExtra?.(selected, {
               refreshDetail: () => refreshDetail(selected),
               detailLoading

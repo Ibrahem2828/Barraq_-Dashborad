@@ -31,7 +31,9 @@ export const endpoints = {
     organizations: "admin/organizations/",
     classes: "admin/classes/",
     invitations: "admin/invitations/",
-    joinRequests: "admin/join-requests/"
+    joinRequests: "admin/join-requests/",
+    studentPerformance: "admin/student-performance/",
+    studentPerformanceSummary: "admin/student-performance/summary/"
   },
   ai: {
     serviceHealth: "ai/service-health/"

@@ -42,6 +42,7 @@ describe("sidebar navigation groups", () => {
     expect(organizationGroup?.keys).toEqual([
       "organizations",
       "classes",
+      "studentPerformance",
       "supervisors",
       "invitations",
       "joinRequests",

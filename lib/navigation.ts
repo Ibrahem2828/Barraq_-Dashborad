@@ -23,6 +23,7 @@ export const navigation: NavItem[] = [
   { key: "users", href: "/users", icon: "users", permission: "users.view", section: "users" },
   { key: "organizations", href: "/organizations", icon: "shield", permission: "organizations.view", section: "organizations" },
   { key: "classes", href: "/classes", icon: "book", permission: "classes.view", section: "classes" },
+  { key: "studentPerformance", href: "/student-performance", icon: "star", permission: "students.view", section: "students" },
   { key: "joinRequests", href: "/join-requests", icon: "users", permission: "join_requests.view", section: "join_requests" },
   { key: "supervisors", href: "/supervisors", icon: "shield", permission: "admins.view", section: "admins" },
   { key: "invitations", href: "/invitations", icon: "file", permission: "invitations.view", section: "invitations" },
@@ -61,7 +62,7 @@ export const navigationGroups: Array<{
   {
     id: "organizations",
     labelKey: "navOrganizations",
-    keys: ["organizations", "classes", "supervisors", "invitations", "joinRequests"]
+    keys: ["organizations", "classes", "studentPerformance", "supervisors", "invitations", "joinRequests"]
   },
   { id: "access", labelKey: "navAccess", keys: ["roles"] },
   { id: "content", labelKey: "navContent", keys: ["education", "sources"] },

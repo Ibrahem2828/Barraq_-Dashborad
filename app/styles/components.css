@@ -1520,3 +1520,35 @@ select.control,
 }
 .class-overview__text { display: grid; gap: 2px; }
 .class-overview__text small { color: var(--text-faint); }
+
+/* Student performance (supervisors) */
+.perf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--space-5); }
+.perf-panel header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.perf-panel h3 { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.perf-bars { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.perf-bars li { display: grid; grid-template-columns: minmax(84px, 7.5rem) 1fr auto; align-items: center; gap: 12px; }
+.perf-bars span { color: var(--text-soft); font-size: var(--fs-sm); }
+.perf-bars strong { min-inline-size: 2ch; text-align: end; font-variant-numeric: tabular-nums; }
+.perf-bar-track { block-size: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.perf-bar { block-size: 100%; border-radius: inherit; background: var(--purple); transition: inline-size 0.4s ease; }
+.perf-bar--completed { background: var(--green); }
+.perf-bar--pending { background: var(--gold); }
+.perf-bar--failed { background: var(--red); }
+.perf-bar--neutral { background: var(--text-faint); }
+.perf-bar--fahes { background: var(--pink); }
+.perf-bar--kholasa { background: var(--blue); }
+.perf-bar--rasheed { background: var(--green); }
+.perf-bar--khota { background: var(--purple); }
+.perf-bar--sada { background: var(--gold); }
+.perf-detail { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.perf-detail h4 { font-weight: var(--fw-bold); margin-top: var(--space-2); }
+.perf-privacy { font-size: var(--fs-sm); }
+@media (max-width: 820px) { .perf-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .perf-bar { transition: none; } }
+.perf-nowrap { white-space: nowrap; }
+.perf-detail__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.perf-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.perf-facts > div { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.perf-facts dt { color: var(--text-soft); font-size: var(--fs-xs); }
+.perf-facts dd { margin: 4px 0 0; font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+@media (max-width: 640px) { .perf-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -4,7 +4,8 @@ export const dashboardKeys = {
   systemHealth: ["dashboard", "system-health"] as const,
   aiServiceHealth: ["dashboard", "ai-service-health"] as const,
   aiJobMetrics: ["dashboard", "ai-job-metrics"] as const,
-  aiUsage: ["dashboard", "ai-usage"] as const
+  aiUsage: ["dashboard", "ai-usage"] as const,
+  studentPerformanceSummary: ["dashboard", "student-performance-summary"] as const
 } as const;
 
 /** Admin session / RBAC profile (Phase 4). */
