@@ -16,6 +16,8 @@ export interface FormField {
   required?: boolean;
   placeholder?: string;
   options?: Array<{ label: string; value: string }>;
+  /** Label of a select's empty choice; filters read "all", a form field may mean "none". */
+  emptyLabel?: string;
   minLength?: number;
   min?: number;
 }
@@ -122,7 +124,7 @@ export function ResourceFormModal({
                   value={String(values[field.key] ?? "")}
                   onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
                 >
-                  <option value="">{dictionary.all}</option>
+                  <option value="">{field.emptyLabel ?? dictionary.all}</option>
                   {(field.options ?? []).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

@@ -56,6 +56,14 @@ export function getErrorMessage(payload: unknown, fallback = "تعذر تنفي�
   if (!payload || typeof payload !== "object") return fallback;
   const value = payload as Record<string, unknown>;
 
+  // The backend's 400 envelope carries a generic "Validation error" message;
+  // the field message ("The class must belong to the chosen organization.")
+  // is the one an operator can act on.
+  if (value.code === "validation_error") {
+    const fieldMessage = formatFieldErrors(value.errors);
+    if (fieldMessage) return fieldMessage;
+  }
+
   if (typeof value.message === "string" && value.message.trim()) return value.message;
 
   if (value.error && typeof value.error === "object") {
