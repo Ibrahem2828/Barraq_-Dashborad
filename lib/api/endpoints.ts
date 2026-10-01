@@ -33,7 +33,8 @@ export const endpoints = {
     invitations: "admin/invitations/",
     joinRequests: "admin/join-requests/",
     studentPerformance: "admin/student-performance/",
-    studentPerformanceSummary: "admin/student-performance/summary/"
+    studentPerformanceSummary: "admin/student-performance/summary/",
+    classLibrary: "admin/class-library/"
   },
   ai: {
     serviceHealth: "ai/service-health/"

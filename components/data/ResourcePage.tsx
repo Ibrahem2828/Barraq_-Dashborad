@@ -168,7 +168,9 @@ export function ResourcePage({
   orderingOptions,
   onFiltersChange,
   summary,
-  hideDetailFields = false
+  hideDetailFields = false,
+  headerActions,
+  reloadKey
 }: {
   title: string;
   description: string;
@@ -206,6 +208,10 @@ export function ResourcePage({
   summary?: ReactNode;
   /** The detail panel (renderDetailExtra) presents the record itself; skip the raw field list. */
   hideDetailFields?: boolean;
+  /** Extra page-header buttons (e.g. an upload that ResourceFormModal cannot express). */
+  headerActions?: ReactNode;
+  /** Change it to make the list refetch after a mutation made outside this component. */
+  reloadKey?: number;
 }) {
   const dictionary = useDictionary();
   const locale = useLocale();
@@ -237,6 +243,11 @@ export function ResourcePage({
   useEffect(() => {
     onFiltersChange?.(filterValues);
   }, [filterValues, onFiltersChange]);
+
+  useEffect(() => {
+    if (reloadKey) reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only an explicit new key refetches
+  }, [reloadKey]);
   const pages = Math.max(1, Math.ceil(data.count / pageSize));
 
   const mobileTitleColumn = useMemo(
@@ -427,6 +438,7 @@ export function ResourcePage({
         description={description}
         actions={
           <>
+            {headerActions}
             {createConfig ? (
               <Button
                 onClick={() => {

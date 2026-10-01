@@ -1552,3 +1552,14 @@ select.control,
 .perf-facts dt { color: var(--text-soft); font-size: var(--fs-xs); }
 .perf-facts dd { margin: 4px 0 0; font-weight: var(--fw-bold); overflow-wrap: anywhere; }
 @media (max-width: 640px) { .perf-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Classroom Shared Library */
+.lib-title { display: grid; gap: 2px; min-inline-size: 12rem; }
+.lib-title small { font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.lib-download { color: var(--purple); font-weight: var(--fw-bold); white-space: nowrap; }
+.lib-download:hover { text-decoration: underline; }
+.upload-progress { display: grid; gap: 6px; }
+.upload-progress__track { block-size: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.upload-progress__bar { block-size: 100%; background: var(--purple); transition: inline-size 0.2s ease; }
+.upload-progress span { color: var(--text-soft); font-size: var(--fs-sm); }
+@media (prefers-reduced-motion: reduce) { .upload-progress__bar { transition: none; } }

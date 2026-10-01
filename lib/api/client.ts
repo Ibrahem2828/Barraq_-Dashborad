@@ -95,5 +95,16 @@ export const api = {
   },
   delete<T>(path: string) {
     return request<T>(path, { method: "DELETE" });
+  },
+  /** Multipart upload with progress (0..1). No timeout: a 50 MB file on a slow line is not a failure. */
+  upload<T>(path: string, form: FormData, onProgress?: (fraction: number) => void) {
+    return request<T>(path, {
+      method: "POST",
+      data: form,
+      timeout: 0,
+      onUploadProgress: (event) => {
+        if (onProgress && event.total) onProgress(Math.min(1, event.loaded / event.total));
+      }
+    });
   }
 };

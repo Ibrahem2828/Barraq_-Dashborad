@@ -14,13 +14,15 @@ import {
 } from "@/lib/auth/server";
 
 const allowedMethods = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
+// 55 MB: room for the backend's 50 MB file ceiling plus multipart framing
+// (Classroom Shared Library uploads), matching the student web BFF.
 const configuredMaxBodyBytes = Number(
-  process.env.BFF_MAX_BODY_BYTES ?? 30 * 1024 * 1024,
+  process.env.BFF_MAX_BODY_BYTES ?? 55 * 1024 * 1024,
 );
 const maxBodyBytes =
   Number.isFinite(configuredMaxBodyBytes) && configuredMaxBodyBytes > 0
     ? configuredMaxBodyBytes
-    : 30 * 1024 * 1024;
+    : 55 * 1024 * 1024;
 
 async function proxy(
   request: NextRequest,
@@ -192,6 +194,11 @@ async function proxy(
       : "application/json; charset=utf-8",
   );
   next.headers.set("Cache-Control", "no-store");
+  // File downloads (class library): keep the server-chosen file name.
+  const disposition = response.headers["content-disposition"];
+  if (typeof disposition === "string") next.headers.set("Content-Disposition", disposition);
+  const nosniff = response.headers["x-content-type-options"];
+  if (typeof nosniff === "string") next.headers.set("X-Content-Type-Options", nosniff);
   const upstreamRequestId = response.headers["x-request-id"];
   if (typeof upstreamRequestId === "string")
     next.headers.set("X-Request-ID", upstreamRequestId);

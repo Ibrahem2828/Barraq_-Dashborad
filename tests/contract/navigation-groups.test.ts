@@ -43,6 +43,7 @@ describe("sidebar navigation groups", () => {
       "organizations",
       "classes",
       "studentPerformance",
+      "classLibrary",
       "supervisors",
       "invitations",
       "joinRequests",
