@@ -42,6 +42,12 @@ describe("paymentReferenceProblem", () => {
     }
   });
 
+  it("refuses a reference that is only separators or has too few letters and digits", () => {
+    for (const reference of ["----", ". . . .", "ab--", "#-/-"]) {
+      expect(paymentReferenceProblem(reference), reference).toBe("invalid");
+    }
+  });
+
   it("refuses a valid card number, with or without separators", () => {
     expect(paymentReferenceProblem("4111111111111111")).toBe("card");
     expect(paymentReferenceProblem("4111 1111 1111 1111")).toBe("card");

@@ -47,9 +47,13 @@ export function looksLikeCardNumber(value: string): boolean {
 
 export type ReferenceProblem = "invalid" | "card";
 
+/** Letters and digits only, as the backend compares references: 'TRX-1001' is 'trx 1001'. */
+const MIN_SIGNIFICANT_CHARS = 4;
+
 export function paymentReferenceProblem(raw: string): ReferenceProblem | null {
   const reference = normalizePaymentReference(raw);
   if (!REFERENCE_PATTERN.test(reference)) return "invalid";
+  if (reference.replace(/[^\p{L}\p{N}]+/gu, "").length < MIN_SIGNIFICANT_CHARS) return "invalid";
   if (looksLikeCardNumber(reference)) return "card";
   return null;
 }
