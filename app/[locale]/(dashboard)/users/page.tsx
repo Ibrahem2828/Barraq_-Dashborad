@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { ResourcePage } from "@/components/data/ResourcePage";
 import type { FormField } from "@/components/data/ResourceFormModal";
 import { valuesToPayload } from "@/components/data/ResourceFormModal";
+import { useActivationPlans } from "@/components/data/useActivationPlans";
 import { useAdmin } from "@/components/providers/AdminProvider";
 import { endpoints, userActionEndpoint } from "@/lib/api/endpoints";
 import { useDictionary } from "@/lib/i18n/useDictionary";
 import { api } from "@/lib/api/client";
+import { buildActivationBody, PAYMENT_METHODS } from "@/lib/subscriptions/activation";
 import type { AnyRecord } from "@/types/api";
 
 interface Option {
@@ -86,6 +88,54 @@ export default function UsersPage() {
   );
   const canGrantRoles = can("admins.assign_roles") && can("roles.view");
   const options = useCreateOptions(canCreate, canGrantRoles);
+  // Granting a paid plan is its own permission: it needs a recorded payment.
+  const canActivateSubscription = can("subscriptions.activate");
+  const paidPlans = useActivationPlans(canActivateSubscription);
+
+  const activationFields = useMemo<FormField[]>(() => {
+    const methodLabels: Record<(typeof PAYMENT_METHODS)[number], string> = {
+      bank_transfer: dictionary.paymentMethodBankTransfer,
+      cash: dictionary.paymentMethodCash,
+      mobile_wallet: dictionary.paymentMethodMobileWallet,
+      external_gateway: dictionary.paymentMethodExternalGateway,
+      other: dictionary.paymentMethodOther
+    };
+    return [
+      paidPlans.length
+        ? {
+            key: "plan_code",
+            label: dictionary.subscriptionPlanField,
+            type: "select",
+            required: true,
+            emptyLabel: dictionary.choosePaidPlan,
+            options: paidPlans
+          }
+        : { key: "plan_code", label: dictionary.subscriptionPlanField, required: true },
+      {
+        key: "payment_method",
+        label: dictionary.paymentMethodField,
+        type: "select",
+        required: true,
+        emptyLabel: dictionary.choosePaymentMethod,
+        options: PAYMENT_METHODS.map((value) => ({ label: methodLabels[value], value }))
+      },
+      {
+        key: "payment_reference",
+        label: dictionary.paymentReferenceField,
+        required: true,
+        minLength: 4,
+        placeholder: dictionary.paymentReferencePlaceholder
+      },
+      {
+        key: "days",
+        label: dictionary.activationDaysField,
+        type: "number",
+        min: 1,
+        placeholder: dictionary.activationDaysPlaceholder
+      },
+      { key: "note", label: dictionary.activationNoteField, type: "textarea" }
+    ];
+  }, [dictionary, paidPlans]);
 
   // Memoized: the form modal resets its values whenever `fields` changes identity.
   const createFields = useMemo<FormField[]>(() => [
@@ -203,6 +253,35 @@ export default function UsersPage() {
           confirm: dictionary.cancelSubscriptionConfirm,
           successToast: dictionary.userSubscriptionCancelled
         },
+        ...(canActivateSubscription
+          ? [
+              {
+                label: dictionary.activateSubscription,
+                variant: "primary" as const,
+                endpoint: (row: AnyRecord) => userActionEndpoint(String(row.id), "activate-subscription"),
+                form: {
+                  title: dictionary.activateSubscriptionTitle,
+                  fields: activationFields,
+                  buildBody: (values: Record<string, string | number | boolean>) =>
+                    buildActivationBody(
+                      values,
+                      {
+                        planRequired: dictionary.choosePaidPlan,
+                        methodRequired: dictionary.choosePaymentMethod,
+                        referenceInvalid: dictionary.errPaymentReferenceInvalid,
+                        referenceCard: dictionary.errPaymentReferenceCard,
+                        periodInvalid: dictionary.errPeriodInvalid
+                      },
+                      new Date()
+                    ),
+                  successMessage: (response: unknown) =>
+                    (response as { created?: boolean } | null)?.created === false
+                      ? dictionary.subscriptionActivationRepeated
+                      : dictionary.subscriptionActivated
+                }
+              }
+            ]
+          : []),
         {
           label: dictionary.changeSubscription,
           variant: "secondary",

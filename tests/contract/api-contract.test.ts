@@ -56,6 +56,10 @@ const actionPaths: Array<[string, string]> = [
     "userActionEndpoint(change-subscription)",
     userActionEndpoint(SAMPLE_ID, "change-subscription"),
   ],
+  [
+    "userActionEndpoint(activate-subscription)",
+    userActionEndpoint(SAMPLE_ID, "activate-subscription"),
+  ],
   ["adminAssignRolesEndpoint", adminAssignRolesEndpoint(SAMPLE_ID)],
   ["supportTicketMessagesEndpoint", supportTicketMessagesEndpoint(SAMPLE_ID)],
   ["aiJobCancelEndpoint", aiJobCancelEndpoint(SAMPLE_ID)],

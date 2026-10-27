@@ -143,6 +143,24 @@ export default function SubscriptionsPage() {
           mobileCards: true
         },
         {
+          id: "activations",
+          label: dictionary.activationsTab,
+          title: dictionary.activationsTitle,
+          description: dictionary.activationsDesc,
+          endpoint: endpoints.admin.subscriptionActivations,
+          columns: [
+            { key: "id", label: "#", type: "number" },
+            { key: "user_email", label: dictionary.colUser, mobile: "title" },
+            { key: "plan_code", label: dictionary.colPlan, mobile: true },
+            { key: "payment_method", label: dictionary.colPaymentMethod, type: "status", mobile: true },
+            { key: "payment_reference", label: dictionary.colPaymentReference, mobile: true },
+            { key: "period_end", label: dictionary.periodEnd, type: "date", mobile: true },
+            { key: "activated_by_email", label: dictionary.colActivatedBy },
+            { key: "created_at", label: dictionary.createdAt, type: "date" }
+          ],
+          mobileCards: true
+        },
+        {
           id: "usage",
           label: dictionary.usageTab,
           title: dictionary.usageTitle,

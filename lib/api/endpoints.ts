@@ -28,6 +28,7 @@ export const endpoints = {
     subscriptionPlans: "admin/subscription-plans/",
     userSubscriptions: "admin/user-subscriptions/",
     subscriptionUsage: "admin/subscription-usage/",
+    subscriptionActivations: "admin/subscription-activations/",
     organizations: "admin/organizations/",
     classes: "admin/classes/",
     invitations: "admin/invitations/",
@@ -53,7 +54,7 @@ export function detailEndpoint(base: string, id: string | number): string {
 
 export function userActionEndpoint(
   userId: string | number,
-  action: "activate" | "suspend" | "cancel-subscription" | "change-subscription"
+  action: "activate" | "suspend" | "cancel-subscription" | "change-subscription" | "activate-subscription"
 ): string {
   return `${endpoints.admin.users}${userId}/${action}/`;
 }

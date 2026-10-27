@@ -19,6 +19,7 @@ import {
   type FormValues
 } from "@/components/data/ResourceFormModal";
 import { useResource } from "@/components/data/useResource";
+import { apiErrorMessage } from "@/lib/api/error-messages";
 import { isUnauthorizedError } from "@/lib/auth/session-expired";
 import { useDictionary, useLocale } from "@/lib/i18n/useDictionary";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -54,6 +55,19 @@ export interface RowAction {
     label: string;
     placeholder?: string;
     buildBody: (input: string, row: AnyRecord) => unknown;
+  };
+  /**
+   * Opens a multi-field form (validated by `buildBody`, which may throw an
+   * Error whose message is shown inline) instead of a single prompt.
+   * Errors stay inside the form; `successMessage` picks the toast from the
+   * response, so a repeated request can say it changed nothing.
+   */
+  form?: {
+    title: string;
+    fields: FormField[];
+    submitLabel?: string;
+    buildBody: (values: FormValues, row: AnyRecord) => unknown;
+    successMessage?: (response: unknown) => string | undefined;
   };
   confirm?: string;
   /** Opt-in: toast on success; API errors use toast instead of inline. */
@@ -228,6 +242,7 @@ export function ResourcePage({
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [compose, setCompose] = useState<{ action: RowAction; row: AnyRecord } | null>(null);
+  const [formAction, setFormAction] = useState<{ action: RowAction; row: AnyRecord } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // An empty result under a search or filter means something different from
@@ -285,23 +300,32 @@ export function ResourcePage({
       return false;
     }
 
+    if (bodyOverride === undefined && action.form) {
+      setFormError(null);
+      setFormAction({ action, row });
+      return false;
+    }
+
     const key = `${action.label}-${String(row.id ?? row.public_id ?? "record")}`;
     setActionBusy(key);
     setActionError(null);
     try {
       const target = action.endpoint(row);
       const method = action.method ?? "POST";
-      if (method === "PATCH") await api.patch(target, body ?? {});
+      let responseData: unknown;
+      if (method === "PATCH") responseData = (await api.patch(target, body ?? {})).data;
       else if (method === "DELETE") await api.delete(target);
-      else await api.post(target, body);
-      if (action.successToast) toast.success(action.successToast);
+      else responseData = (await api.post(target, body)).data;
+      const successMessage = action.form?.successMessage?.(responseData) ?? action.successToast;
+      if (successMessage) toast.success(successMessage);
       setSelected(null);
       setCompose(null);
+      setFormAction(null);
       reload();
       return true;
     } catch (reason) {
       if (isUnauthorizedError(reason)) return false;
-      const message = reason instanceof Error ? reason.message : dictionary.actionFailed;
+      const message = apiErrorMessage(reason, dictionary, dictionary.actionFailed);
       if (action.successToast) {
         toast.error(message);
       } else {
@@ -326,7 +350,7 @@ export function ResourcePage({
       reload();
     } catch (reason) {
       if (isUnauthorizedError(reason)) return;
-      const message = reason instanceof Error ? reason.message : dictionary.actionFailed;
+      const message = apiErrorMessage(reason, dictionary, dictionary.actionFailed);
       if (mutationToasts) toast.error(message);
       else setFormError(message);
     } finally {
@@ -351,7 +375,7 @@ export function ResourcePage({
       reload();
     } catch (reason) {
       if (isUnauthorizedError(reason)) return;
-      const message = reason instanceof Error ? reason.message : dictionary.actionFailed;
+      const message = apiErrorMessage(reason, dictionary, dictionary.actionFailed);
       if (mutationToasts) toast.error(message);
       else setFormError(message);
     } finally {
@@ -372,6 +396,24 @@ export function ResourcePage({
       const body = compose.action.compose.buildBody(input, compose.row);
       const ok = await executeAction(compose.action, compose.row, body);
       if (!ok) return;
+    } finally {
+      setFormBusy(false);
+    }
+  }
+
+  async function submitFormAction(values: FormValues) {
+    if (!formAction?.action.form) return;
+    setFormBusy(true);
+    setFormError(null);
+    try {
+      let body: unknown;
+      try {
+        body = formAction.action.form.buildBody(values, formAction.row);
+      } catch (reason) {
+        setFormError(reason instanceof Error ? reason.message : dictionary.actionFailed);
+        return;
+      }
+      await executeAction(formAction.action, formAction.row, body);
     } finally {
       setFormBusy(false);
     }
@@ -757,6 +799,19 @@ export function ResourcePage({
           error={formError}
           onClose={() => setCompose(null)}
           onSubmit={submitCompose}
+        />
+      ) : null}
+
+      {formAction?.action.form ? (
+        <ResourceFormModal
+          open
+          title={formAction.action.form.title}
+          fields={formAction.action.form.fields}
+          submitLabel={formAction.action.form.submitLabel ?? formAction.action.label}
+          busy={formBusy}
+          error={formError}
+          onClose={() => setFormAction(null)}
+          onSubmit={submitFormAction}
         />
       ) : null}
     </>
